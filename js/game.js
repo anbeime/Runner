@@ -666,7 +666,7 @@ class Game {
     if (this.isMobile) this._initMobileHotbar();
     this._initEvents();
 
-    // 设置预览视角：近距离平视"Coze"立墙
+    // 设置预览视角：近距离平视"BILIBILI"立墙
     this.camera.position.set(0, 23, 12);
     this.camera.lookAt(0, 25, 0);
 
@@ -675,7 +675,7 @@ class Game {
 
     const radius = this.renderDistance;
 
-    // 按离世界中心距离排序，优先加载"Coze"立墙区域
+    // 按离世界中心距离排序，优先加载"BILIBILI"立墙区域
     const chunksToLoad = [];
     for (let dx = -radius; dx <= radius; dx++) {
       for (let dz = -radius; dz <= radius; dz++) {
@@ -702,7 +702,7 @@ class Game {
         generated++;
         this.ui.loadingFill.style.width = `${(generated / needed * 100) | 0}%`;
 
-        // 中心区块加载完毕后立即渲染首帧（确保"Coze"立墙可见）
+        // 中心区块加载完毕后立即渲染首帧（确保"BILIBILI"立墙可见）
         if (!firstFrameDone && cx * cx + cz * cz <= 4) {
           this.renderer.render(this.scene, this.camera);
           firstFrameDone = true;
