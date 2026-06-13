@@ -38,7 +38,7 @@ export const BlockType = {
   WOOD: 5,
   LEAVES: 6,
   WATER: 7,
-  COZE_CYAN: 8,         // 青色（Coze 文字立墙）
+  BILIBILI_PINK: 8,     // Bilibili 粉色 (#FB7299)
 };
 
 // 方块名称映射（用于UI显示）
@@ -50,7 +50,7 @@ export const BlockNames = {
   [BlockType.WOOD]: '木头',
   [BlockType.LEAVES]: '树叶',
   [BlockType.WATER]: '水',
-  [BlockType.COZE_CYAN]: '青色',
+  [BlockType.BILIBILI_PINK]: '粉色',
 };
 
 // 非固体方块（可穿过）
@@ -80,7 +80,7 @@ const TEX = {
   WOOD_TOP: 6,
   LEAVES: 7,
   WATER: 8,
-  COZE_CYAN: 9,
+  BILIBILI_PINK: 9,
 };
 
 // 每种方块的面纹理映射 { top, side, bottom }
@@ -92,7 +92,7 @@ const BLOCK_TEXTURES = {
   [BlockType.WOOD]:       { top: TEX.WOOD_TOP,     side: TEX.WOOD_SIDE,  bottom: TEX.WOOD_TOP },
   [BlockType.LEAVES]:     { top: TEX.LEAVES,       side: TEX.LEAVES,     bottom: TEX.LEAVES },
   [BlockType.WATER]:      { top: TEX.WATER,        side: TEX.WATER,      bottom: TEX.WATER },
-  [BlockType.COZE_CYAN]:  { top: TEX.COZE_CYAN,    side: TEX.COZE_CYAN,  bottom: TEX.COZE_CYAN },
+  [BlockType.BILIBILI_PINK]:  { top: TEX.BILIBILI_PINK,    side: TEX.BILIBILI_PINK,  bottom: TEX.BILIBILI_PINK },
 };
 
 /** 伪随机数生成器（基于坐标，用于纹理像素变化） */
@@ -229,9 +229,9 @@ function createAtlasCanvas() {
     }
   });
 
-  // === Coze 品牌粉色纹理 (#F46B95) ===
-  drawTexture(ctx, TEX.COZE_CYAN, (c) => {
-    fillNoisy(c, 244, 107, 149, 10);
+  // === Bilibili 品牌粉色纹理 (#FB7299) ===
+  drawTexture(ctx, TEX.BILIBILI_PINK, (c) => {
+    fillNoisy(c, 251, 114, 153, 8);
   });
 
   return canvas;
@@ -258,7 +258,7 @@ export function getBlockColor(type) {
     [BlockType.WOOD]:       '#78503a',
     [BlockType.LEAVES]:     '#2d6e1e',
     [BlockType.WATER]:      '#3388dd',
-    [BlockType.COZE_CYAN]:  '#F46B95',
+    [BlockType.BILIBILI_PINK]: '#FB7299',
   };
   return colors[type] || '#ff00ff';
 }
@@ -520,22 +520,24 @@ export class World {
     if (chunk) chunk.dirty = true;
   }
 
-  // ────────────── Coze 文字立墙（XY 平面，面朝南）──────────────
+  // ────────────── BILIBILI 文字立墙（XY 平面，面朝南）──────────────
   // 每个字母 9×9 像素位图，立墙：row=Y(上→下), col=X(左→右)
   static LETTERS = {
-    C: [[0,1,1,1,1,1,1,1,0],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,1],[0,1,1,1,1,1,1,1,0]],
-    o: [[0,1,1,1,1,1,1,1,0],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[0,1,1,1,1,1,1,1,0]],
-    z: [[1,1,1,1,1,1,1,1,1],[0,1,0,0,0,0,0,0,0],[0,0,1,0,0,0,0,0,0],[0,0,0,1,0,0,0,0,0],[0,0,0,0,1,0,0,0,0],[0,0,0,0,0,1,0,0,0],[0,0,0,0,0,0,1,0,0],[0,0,0,0,0,0,0,1,0],[1,1,1,1,1,1,1,1,1]],
-    e: [[1,1,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,0],[1,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0],[1,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,1]],
+    // B 字母
+    B: [[0,1,1,1,1,1,1,1,0],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,1,1,1,0],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[1,0,0,0,0,0,0,0,1],[0,1,1,1,1,1,1,1,0]],
+    // I 字母
+    I: [[0,0,1,1,1,1,1,0,0],[0,0,0,0,1,0,0,0,0],[0,0,0,0,1,0,0,0,0],[0,0,0,0,1,0,0,0,0],[0,0,0,0,1,0,0,0,0],[0,0,0,0,1,0,0,0,0],[0,0,0,0,1,0,0,0,0],[0,0,0,0,1,0,0,0,0],[0,0,1,1,1,1,1,0,0]],
+    // L 字母
+    L: [[1,1,1,1,1,1,1,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[0,0,0,0,0,0,0,1,0],[1,1,1,1,1,1,1,1,1]],
   };
-  static WORD = ['C','o','z','e'];
+  static WORD = ['B','I','L','I','B','I','L','I'];  // 8 个字母
   static LETTER_SIZE = 9;
   static GAP = 2;
   static TEXT_GROUND_Y = 18;        // 沙质地面 Y（抬高4层）
-  static TEXT_FLAT_RADIUS_X = 22;   // 平地 X 方向半径
-  static TEXT_FLAT_RADIUS_Z = 10;   // 平地 Z 方向半径
-  static TOTAL_W = 42;              // 9×4 + 2×3
-  static TEXT_START_X = -21;        // -floor(42/2)
+  static TEXT_FLAT_RADIUS_X = 50;   // 平地 X 方向半径（容纳86宽度的文字）
+  static TEXT_FLAT_RADIUS_Z = 15;   // 平地 Z 方向半径（扩大前方空地）
+  static TOTAL_W = 86;              // 9×8 + 2×7 = 72 + 14 = 86
+  static TEXT_START_X = -43;        // -floor(86/2)
   static TEXT_BASE_Y = 19;          // 立墙底部 Y（在沙地上，跟随地面抬高）
   static TEXT_WALL_Z = 0;           // 立墙中心 Z
   static TEXT_WALL_DEPTH = 3;       // 立墙厚度
@@ -557,7 +559,7 @@ export class World {
     let off = 0;
     for (const ch of World.WORD) {
       if (lx >= off && lx < off + World.LETTER_SIZE) {
-        return World.LETTERS[ch][ly][lx - off] ? BlockType.LEAVES : BlockType.AIR;
+        return World.LETTERS[ch][ly][lx - off] ? BlockType.BILIBILI_PINK : BlockType.AIR;
       }
       off += World.LETTER_SIZE + World.GAP;
     }
@@ -578,7 +580,7 @@ export class World {
     const wz0 = cz * CHUNK_SIZE;
     const GY = World.TEXT_GROUND_Y;
 
-    // === 文字区域：沙质平地 + 青色立墙 ===
+    // === 文字区域：沙质平地 + Bilibili 粉色立墙 ===
     if (this._isInTextZone(cx, cz)) {
       for (let lz = 0; lz < CHUNK_SIZE; lz++) {
         for (let lx = 0; lx < CHUNK_SIZE; lx++) {

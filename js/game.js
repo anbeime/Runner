@@ -19,13 +19,16 @@ class Player {
     this.camera = camera;
     this.world = world;
 
-    // 位置与速度
-    this.position = new THREE.Vector3(5.4, -27.0, 22.6);
+    // 位置与速度（出生点在文字墙正对面，面朝立墙）
+    // 文字墙位于 z=0，玩家应在 z>0 位置，yaw=0 时看向负Z方向（南）
+    // 文字墙基底 Y=19，顶部 Y=27，玩家站在沙地 Y=18 上方
+    this.position = new THREE.Vector3(0, 22, 35);  // 在立墙前方35格处，站在沙地上
     this.velocity = new THREE.Vector3(0, 0, 0);
 
     // 视角旋转（欧拉角）
-    this.pitch = 0;   // 上下俯仰
-    this.yaw = 0;     // 左右偏航
+    // 微俯视以更好观看文字墙（pitch 负值为向上看）
+    this.pitch = -0.25;   // 上下俯仰（约-14度，略微向上）
+    this.yaw = 0;         // 左右偏航（面向负Z方向=南=文字墙）
 
     // 物理参数
     this.gravity = -25;
