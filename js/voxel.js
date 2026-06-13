@@ -590,9 +590,9 @@ export class World {
             let b;
             if (y < GY - 5)              b = BlockType.STONE;
             else if (y < GY)             b = BlockType.DIRT;
-            else if (y === GY)           b = BlockType.GRASS;
+            else if (y === GY)           b = BlockType.SAND;  // 沙质平地
             else if (y >= World.TEXT_BASE_Y && y <= World.TEXT_BASE_Y + World.LETTER_SIZE - 1) {
-              b = this._getTextBlock(wx, y, wz);
+              b = this._getTextBlock(wx, y, wz);  // BILIBILI 文字立墙
             } else                       b = BlockType.AIR;
             chunk.setBlock(lx, y, lz, b);
           }
