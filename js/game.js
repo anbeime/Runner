@@ -8,8 +8,8 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=bilibili2026';
-import { AnimalManager } from './animals.js?v=bilibili2026';
+} from './voxel.js?v=pycraft2026';
+import { AnimalManager } from './animals.js?v=pycraft2026';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -648,12 +648,18 @@ class Game {
       controlsPanel: document.getElementById('controlsPanel'),
     };
 
-    // 可选方块列表
+    // 可选方块列表（扩展版，来自 pycraft）
     this.blockTypes = [
       BlockType.GRASS, BlockType.DIRT, BlockType.STONE,
       BlockType.SAND, BlockType.WOOD, BlockType.LEAVES,
+      BlockType.COBBLESTONE, BlockType.PLANKS, BlockType.BRICK,
+      BlockType.GLASS, BlockType.COAL_ORE, BlockType.IRON_ORE,
+      BlockType.GOLD_ORE, BlockType.DIAMOND_ORE,
     ];
     this.selectedSlot = 0;
+    
+    // 云彩系统
+    this.clouds = null;
   }
 
   /** 初始化游戏 */
@@ -784,6 +790,9 @@ class Game {
     this.world = new World(this.scene);
     this.world.renderDistance = this.renderDistance;
     this.world.init();
+    
+    // 初始化云彩系统（来自 pycraft）
+    this._initClouds();
 
     // 初始化机器人生成管理器
     this.animalManager = new AnimalManager(this.scene, this.world, this.isMobile);
@@ -801,6 +810,51 @@ class Game {
   /** 初始化玩家 */
   _initPlayer() {
     this.player = new Player(this.camera, this.world);
+  }
+
+  /** 初始化云彩系统（来自 pycraft 美化） */
+  _initClouds() {
+    // 云彩使用多个半透明白色平面组成
+    const cloudGroup = new THREE.Group();
+    const cloudMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.85,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    
+    // 生成随机分布的云朵
+    const cloudCount = this.isMobile ? 15 : 30; // 移动端减少云量
+    for (let i = 0; i < cloudCount; i++) {
+      const cloud = new THREE.Group();
+      
+      // 每朵云由2-5个椭圆组成
+      const puffCount = 2 + Math.floor(Math.random() * 4);
+      for (let j = 0; j < puffCount; j++) {
+        const width = 8 + Math.random() * 12;
+        const height = 3 + Math.random() * 2;
+        const geometry = new THREE.PlaneGeometry(width, height);
+        const mesh = new THREE.Mesh(geometry, cloudMaterial);
+        mesh.position.set(
+          (Math.random() - 0.5) * width * 0.8,
+          (Math.random() - 0.5) * height * 0.3,
+          0
+        );
+        cloud.add(mesh);
+      }
+      
+      // 云朵位置：高度80-120，随机分布在世界周围
+      cloud.position.set(
+        (Math.random() - 0.5) * 200,
+        80 + Math.random() * 40,
+        (Math.random() - 0.5) * 200
+      );
+      cloudGroup.add(cloud);
+    }
+    
+    this.clouds = cloudGroup;
+    this.scene.add(cloudGroup);
   }
 
   /** 初始化方块高亮 */
@@ -1158,6 +1212,20 @@ class Game {
       this.player.update(dt);
       this.world.update(this.player.position.x, this.player.position.z);
       this.highlight.update(this.player.targetBlock);
+    }
+    
+    // 云彩缓慢移动（始终运行）
+    if (this.clouds) {
+      this.clouds.children.forEach((cloud, idx) => {
+        // 每朵云以略微不同的速度向东移动
+        const speed = 0.5 + (idx % 5) * 0.2;
+        cloud.position.x += speed * dt;
+        // 云彩循环：移出视野后重新从西边出现
+        if (cloud.position.x > 120) {
+          cloud.position.x = -120;
+          cloud.position.z = (Math.random() - 0.5) * 200;
+        }
+      });
     }
 
     // 更新机器人 AI（始终运行，即使暂停状态也让机器人有生命感）
