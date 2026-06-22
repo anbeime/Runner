@@ -8,8 +8,8 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=pycraft2026';
-import { AnimalManager } from './animals.js?v=pycraft2026';
+} from './voxel.js?v=airobot2026';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=airobot2026';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -982,6 +982,26 @@ class Game {
       if (e.code === 'Digit0' || e.code === 'Numpad0') {  // 0 重置视野
         this._resetFOV();
       }
+      
+      // B键 - 控制BuilderBot建造/跟随
+      if (e.code === 'KeyB') {
+        if (this.animalManager) {
+          const bots = this.animalManager.animals.filter(a => a.type === 'builder');
+          if (bots.length > 0) {
+            bots.forEach(bot => {
+              bot.buildingMode = !bot.buildingMode;
+              bot.targetPos = bot.buildingMode ? null : this.player.position.clone();
+            });
+          }
+        }
+      }
+      
+      // N键 - 生成新的BuilderBot
+      if (e.code === 'KeyN') {
+        if (this.animalManager && this.isRunning) {
+          this.animalManager.spawnBuilderNearPlayer(this.player.position);
+        }
+      }
     });
 
     document.addEventListener('keyup', (e) => {
@@ -1169,12 +1189,19 @@ class Game {
     const cz = Math.floor(pos.z / CHUNK_SIZE);
     const chunks = this.world.chunks.size;
 
+    // 获取机器人统计信息
+    const robotStats = this.animalManager ? this.animalManager.getStats() : { scout: 0, heavy: 0, builder: 0 };
+    const totalRobots = robotStats.scout + robotStats.heavy + robotStats.builder;
+
     this.ui.debugInfo.innerHTML =
       `FPS: ${this.fps}<br>` +
       `FOV: ${this.fov.toFixed(0)}°<br>` +
       `XYZ: ${pos.x.toFixed(1)} / ${pos.y.toFixed(1)} / ${pos.z.toFixed(1)}<br>` +
       `区块: ${cx}, ${cz} | 已加载: ${chunks}<br>` +
-      `机器人: ${this.animalManager ? this.animalManager.animals.length : 0} 只`;
+      `机器人: ${totalRobots} 只<br>` +
+      `<span style="color:#5B9BD5">侦察: ${robotStats.scout}</span> | ` +
+      `<span style="color:#E67E22">重型: ${robotStats.heavy}</span> | ` +
+      `<span style="color:#3498DB">建造: ${robotStats.builder}</span>`;
 
     // 目标方块提示（已禁用）
     this.ui.blockHighlight.style.display = 'none';

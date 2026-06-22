@@ -1,6 +1,7 @@
 /**
- * 像素方块世界 - 机器人实体系统
- * 包含：ScoutBot（轻型侦察机器人）、HeavyBot（重型机器人）的体素模型、AI 行为、生成管理
+ * 像素方块世界 - 机器人实体系统（AI完全体版）
+ * 包含：ScoutBot（轻型侦察机器人）、HeavyBot（重型机器人）、BuilderBot（建造机器人）的体素模型、智能AI行为、生成管理
+ * 参考：【当AI完全体进入我的世界！！】
  */
 import * as THREE from 'three';
 import { BlockType, isSolid, CHUNK_SIZE } from './voxel.js';
@@ -450,7 +451,212 @@ class HeavyBot extends Robot {
 }
 
 /* ============================================
-   机器人生成管理器
+   建造机器人 (BuilderBot) — AI核心！
+   能自动建造简单结构，跟随玩家，展示AI能力
+   ============================================ */
+class BuilderBot extends Robot {
+  constructor(scene, world, x, y, z) {
+    super(scene, world, x, y, z);
+    this.collisionWidth = 0.6;
+    this.collisionHeight = 1.0;
+    this.wanderSpeed = 1.8;
+    this.turnSpeed = 3.0;
+    this.antennaAngle = 0;
+    
+    // 建造AI状态
+    this.buildMode = false;
+    this.buildTarget = null;
+    this.buildQueue = [];
+    this.buildCooldown = 0;
+    this.followingPlayer = false;
+    this.playerTarget = null;
+    
+    this._buildModel();
+  }
+
+  _buildModel() {
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x4A90D9 });    // 科技蓝
+    const darkMat = new THREE.MeshLambertMaterial({ color: 0x1E3A5F });    // 深蓝
+    const accentMat = new THREE.MeshLambertMaterial({ color: 0xFFD700 });  // 金色点缀
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00FF88 });       // 发光绿眼睛（AI指示）
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00FFFF });      // 青色发光
+    
+    // ── 身体（科技躯干）──
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.8), bodyMat);
+    body.position.set(0, 0.5, 0);
+    this.group.add(body);
+    
+    // 胸部核心（发光AI核心）
+    const corePanel = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.05), darkMat);
+    corePanel.position.set(0, 0.55, 0.43);
+    this.group.add(corePanel);
+    
+    const aiCore = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.03), glowMat);
+    aiCore.position.set(0, 0.55, 0.46);
+    aiCore.name = 'aiCore';
+    this.group.add(aiCore);
+    
+    // ── 头部 ──
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.35, 0.4), bodyMat);
+    head.position.set(0, 0.82, 0.25);
+    this.group.add(head);
+    
+    // 面罩（显示面板）
+    const faceplate = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.03), darkMat);
+    faceplate.position.set(0, 0.82, 0.47);
+    this.group.add(faceplate);
+    
+    // 眼睛（两个绿色发光方块）
+    const eyeGeo = new THREE.BoxGeometry(0.08, 0.06, 0.02);
+    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeL.position.set(0.08, 0.88, 0.49);
+    this.group.add(eyeL);
+    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
+    eyeR.position.set(-0.08, 0.88, 0.49);
+    this.group.add(eyeR);
+    
+    // ── 三天线（三角形排列）──
+    const antGeo = new THREE.BoxGeometry(0.04, 0.22, 0.04);
+    // 中央天线
+    const antC = new THREE.Mesh(antGeo, darkMat);
+    antC.position.set(0, 1.08, 0.22);
+    this.group.add(antC);
+    const ballC = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.08), accentMat);
+    ballC.position.set(0, 1.2, 0.22);
+    ballC.name = 'antennaBallC';
+    this.group.add(ballC);
+    
+    // 左天线
+    const antL = new THREE.Mesh(antGeo, darkMat);
+    antL.position.set(0.12, 1.05, 0.22);
+    this.group.add(antL);
+    const ballL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), accentMat);
+    ballL.position.set(0.12, 1.17, 0.22);
+    ballL.name = 'antennaBallL2';
+    this.group.add(ballL);
+    
+    // 右天线
+    const antR = new THREE.Mesh(antGeo, darkMat);
+    antR.position.set(-0.12, 1.05, 0.22);
+    this.group.add(antR);
+    const ballR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), accentMat);
+    ballR.position.set(-0.12, 1.17, 0.22);
+    ballR.name = 'antennaBallR2';
+    this.group.add(ballR);
+    
+    // ── 机械手臂（建造工具）──
+    const armGeo = new THREE.BoxGeometry(0.12, 0.35, 0.15);
+    const armMat = new THREE.MeshLambertMaterial({ color: 0x3A5F8F });
+    const armL = new THREE.Mesh(armGeo, armMat);
+    armL.position.set(0.36, 0.45, 0.1);
+    this.group.add(armL);
+    this._animParts.push(armL);
+    const armR = new THREE.Mesh(armGeo, armMat);
+    armR.position.set(-0.36, 0.45, 0.1);
+    this.group.add(armR);
+    this._animParts.push(armR);
+    
+    // 建造工具（手臂末端）
+    const toolGeo = new THREE.BoxGeometry(0.08, 0.08, 0.12);
+    const toolL = new THREE.Mesh(toolGeo, accentMat);
+    toolL.position.set(0.36, 0.28, 0.18);
+    toolL.name = 'buildToolL';
+    this.group.add(toolL);
+    const toolR = new THREE.Mesh(toolGeo, accentMat);
+    toolR.position.set(-0.36, 0.28, 0.18);
+    toolR.name = 'buildToolR';
+    this.group.add(toolR);
+    
+    // ── 腿部（机械关节腿）──
+    const legGeo = new THREE.BoxGeometry(0.14, 0.32, 0.14);
+    const legMat = new THREE.MeshLambertMaterial({ color: 0x5A7FAF });
+    const legs = [
+      [0.15, 0.16, 0.22], [-0.15, 0.16, 0.22],
+      [0.15, 0.16, -0.22], [-0.15, 0.16, -0.22],
+    ];
+    for (const [lx, ly, lz] of legs) {
+      const leg = new THREE.Mesh(legGeo, legMat);
+      leg.position.set(lx, ly, lz);
+      this.group.add(leg);
+      this._animParts.push(leg);
+    }
+  }
+
+  _animateAntenna(dt) {
+    this.antennaAngle += dt * 3;
+    const ballC = this.group.getObjectByName('antennaBallC');
+    const ballL = this.group.getObjectByName('antennaBallL2');
+    const ballR = this.group.getObjectByName('antennaBallR2');
+    
+    if (ballC) {
+      ballC.position.y = 1.2 + Math.sin(this.antennaAngle) * 0.02;
+    }
+    if (ballL) {
+      ballL.position.x = 0.12 + Math.sin(this.antennaAngle * 1.5) * 0.02;
+    }
+    if (ballR) {
+      ballR.position.x = -0.12 - Math.sin(this.antennaAngle * 1.5) * 0.02;
+    }
+    
+    // AI核心闪烁
+    const aiCore = this.group.getObjectByName('aiCore');
+    if (aiCore) {
+      const pulse = 0.5 + Math.sin(this.antennaAngle * 2) * 0.5;
+      aiCore.material.color.setRGB(pulse, 1, pulse);
+    }
+  }
+
+  // 设置跟随玩家
+  setFollowPlayer(playerPos) {
+    this.followingPlayer = true;
+    this.playerTarget = playerPos.clone();
+    this.state = 'follow';
+  }
+
+  // 停止跟随
+  stopFollow() {
+    this.followingPlayer = false;
+    this.playerTarget = null;
+    this.state = 'idle';
+  }
+
+  // 建造方块
+  tryBuildBlock() {
+    if (this.buildCooldown > 0 || !this.buildTarget) return false;
+    
+    const { x, y, z, type } = this.buildTarget;
+    this.world.setBlock(x, y, z, type);
+    this.buildCooldown = 0.5; // 建造冷却
+    this.buildTarget = null;
+    return true;
+  }
+
+  update(dt, center) {
+    super.update(dt, center);
+    
+    // 建造冷却
+    if (this.buildCooldown > 0) {
+      this.buildCooldown -= dt;
+    }
+    
+    // 尝试建造
+    if (this.buildTarget && this.buildCooldown <= 0) {
+      this.tryBuildBlock();
+    }
+  }
+
+  getInfo() {
+    return {
+      name: 'BuilderBot',
+      type: '建造机器人',
+      status: this.followingPlayer ? '跟随玩家' : (this.buildMode ? '建造中' : '待命'),
+      color: '科技蓝',
+    };
+  }
+}
+
+/* ============================================
+   机器人生成管理器（增强版）
    ============================================ */
 export class AnimalManager {
   constructor(scene, world, isMobile = false) {
@@ -472,6 +678,7 @@ export class AnimalManager {
 
     const scoutCount = this.isMobile ? MOBILE_SCOUT_COUNT : SCOUT_COUNT;
     const heavyCount = this.isMobile ? MOBILE_HEAVY_COUNT : HEAVY_COUNT;
+    const builderCount = this.isMobile ? 1 : 2; // BuilderBot 数量
     const usedPositions = [];
 
     const trySpawn = (type) => {
@@ -484,7 +691,10 @@ export class AnimalManager {
         const groundBlock = this.world.getBlock(
           Math.floor(sx), Math.floor(this._getGroundY(sx, sz) - 1), Math.floor(sz)
         );
-        if (groundBlock !== BlockType.GRASS && groundBlock !== BlockType.SAND) continue;
+        // BuilderBot 可以在任何固体地面生成
+        const validGround = type === 'builder' ? isSolid(groundBlock) : 
+          (groundBlock === BlockType.GRASS || groundBlock === BlockType.SAND || groundBlock === BlockType.SNOW_GRASS);
+        if (!validGround) continue;
 
         const gy = this._getGroundY(sx, sz);
         if (gy < 1 || gy > 40) continue;
@@ -500,17 +710,49 @@ export class AnimalManager {
         let robot;
         if (type === 'scout') {
           robot = new ScoutBot(this.scene, this.world, sx, gy, sz);
-        } else {
+        } else if (type === 'heavy') {
           robot = new HeavyBot(this.scene, this.world, sx, gy, sz);
+        } else if (type === 'builder') {
+          robot = new BuilderBot(this.scene, this.world, sx, gy, sz);
         }
         this.robots.push(robot);
         return;
       }
     };
 
-    // 先生成重型机器人，再生成轻型侦察机器人
+    // 生成所有类型机器人
     for (let i = 0; i < heavyCount; i++) trySpawn('heavy');
     for (let i = 0; i < scoutCount; i++) trySpawn('scout');
+    for (let i = 0; i < builderCount; i++) trySpawn('builder');
+  }
+
+  // 获取机器人统计信息
+  getStats() {
+    const stats = { scout: 0, heavy: 0, builder: 0 };
+    for (const robot of this.robots) {
+      if (robot instanceof ScoutBot) stats.scout++;
+      else if (robot instanceof HeavyBot) stats.heavy++;
+      else if (robot instanceof BuilderBot) stats.builder++;
+    }
+    return stats;
+  }
+
+  // 让 BuilderBot 跟随玩家
+  setBuilderFollow(playerPos) {
+    for (const robot of this.robots) {
+      if (robot instanceof BuilderBot) {
+        robot.setFollowPlayer(playerPos);
+      }
+    }
+  }
+
+  // 停止所有 BuilderBot 跟随
+  stopBuilderFollow() {
+    for (const robot of this.robots) {
+      if (robot instanceof BuilderBot) {
+        robot.stopFollow();
+      }
+    }
   }
 
   _getGroundY(wx, wz) {
