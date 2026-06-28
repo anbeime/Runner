@@ -227,7 +227,7 @@ class Robot {
    轻型侦察机器人 (ScoutBot) — 替换牛
    小巧灵活，蓝色眼睛，单天线
    ============================================ */
-class ScoutBot extends Robot {
+export class ScoutBot extends Robot {
   constructor(scene, world, x, y, z) {
     super(scene, world, x, y, z);
     this.collisionWidth = 0.7;
@@ -324,7 +324,7 @@ class ScoutBot extends Robot {
    重型机器人 (HeavyBot) — 替换马
    更大更强壮，橙色眼睛，双天线，履带式腿
    ============================================ */
-class HeavyBot extends Robot {
+export class HeavyBot extends Robot {
   constructor(scene, world, x, y, z) {
     super(scene, world, x, y, z);
     this.collisionWidth = 0.85;
@@ -454,7 +454,7 @@ class HeavyBot extends Robot {
    建造机器人 (BuilderBot) — AI核心！
    能自动建造简单结构，跟随玩家，展示AI能力
    ============================================ */
-class BuilderBot extends Robot {
+export class BuilderBot extends Robot {
   constructor(scene, world, x, y, z) {
     super(scene, world, x, y, z);
     this.collisionWidth = 0.6;

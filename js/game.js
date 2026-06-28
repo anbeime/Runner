@@ -8,7 +8,7 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=airobot2026';
+} from './voxel.js?v=airobot2026fix';
 import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=airobot2026';
 
 /* ============================================
