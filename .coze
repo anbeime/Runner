@@ -6,9 +6,9 @@ version = "0.0.21"
 appliedPatches = [ ]
 
 [dev]
-build = [ "pnpm", "add", "-g", "serve" ]
-run = [ "sh", "-c", "cd \"$COZE_WORKSPACE_PATH\" && npx serve -l \"$DEPLOY_RUN_PORT\" --no-clipboard" ]
+build = [ "echo", "no build needed" ]
+run = [ "node", "server.js" ]
 
 [deploy]
-build = [ "pnpm", "add", "-g", "serve" ]
-run = [ "sh", "-c", "npx serve -l \"$DEPLOY_RUN_PORT\" --no-clipboard" ]
+build = [ "echo", "no build needed" ]
+run = [ "node", "server.js" ]

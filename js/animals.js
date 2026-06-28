@@ -632,16 +632,52 @@ export class BuilderBot extends Robot {
   }
 
   update(dt, center) {
-    super.update(dt, center);
-    
     // 建造冷却
     if (this.buildCooldown > 0) {
       this.buildCooldown -= dt;
+    }
+
+    // 跟随玩家逻辑
+    if (this.state === 'follow' && this.playerTarget) {
+      this._updateFollow(dt, center);
+    } else {
+      super.update(dt, center);
     }
     
     // 尝试建造
     if (this.buildTarget && this.buildCooldown <= 0) {
       this.tryBuildBlock();
+    }
+  }
+
+  _updateFollow(dt, center) {
+    if (!this.playerTarget) {
+      this.state = 'idle';
+      return;
+    }
+    const dx = this.playerTarget.x - this.position.x;
+    const dz = this.playerTarget.z - this.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    if (dist > 2.5) {
+      // 向玩家移动
+      const dirX = dx / dist;
+      const dirZ = dz / dist;
+      const step = this.wanderSpeed * dt;
+      const nx = this.position.x + dirX * step;
+      const nz = this.position.z + dirZ * step;
+      const ny = this._getGroundY(nx, nz);
+
+      if (this._isSafeStep(nx, ny, nz)) {
+        this.position.x = nx;
+        this.position.z = nz;
+        this.position.y = ny;
+      }
+      this.targetRotation = Math.atan2(dirZ, dirX);
+      this._animateLimbs(dt);
+    } else {
+      // 到达玩家附近，待命
+      this._resetLimbs();
     }
   }
 
@@ -753,6 +789,39 @@ export class AnimalManager {
         robot.stopFollow();
       }
     }
+  }
+
+  // 在玩家附近生成 BuilderBot
+  spawnBuilderNearPlayer(playerPos) {
+    for (let attempt = 0; attempt < 30; attempt++) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = randRange(3, 8);
+      const sx = playerPos.x + Math.cos(angle) * dist;
+      const sz = playerPos.z + Math.sin(angle) * dist;
+      const gy = this._getGroundY(sx, sz);
+
+      if (gy < 1 || gy > 40) continue;
+
+      const groundBlock = this.world.getBlock(
+        Math.floor(sx), Math.floor(gy - 1), Math.floor(sz)
+      );
+      if (!isSolid(groundBlock)) continue;
+
+      // 检查是否与其他机器人太近
+      let tooClose = false;
+      for (const robot of this.robots) {
+        const d = Math.sqrt(
+          (sx - robot.position.x) ** 2 + (sz - robot.position.z) ** 2
+        );
+        if (d < 3) { tooClose = true; break; }
+      }
+      if (tooClose) continue;
+
+      const builder = new BuilderBot(this.scene, this.world, sx, gy, sz);
+      this.robots.push(builder);
+      return builder;
+    }
+    return null;
   }
 
   _getGroundY(wx, wz) {

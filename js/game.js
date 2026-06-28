@@ -8,8 +8,8 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1782632273';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782632273';
+} from './voxel.js?v=1782634540';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782634540';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -986,11 +986,15 @@ class Game {
       // B键 - 控制BuilderBot建造/跟随
       if (e.code === 'KeyB') {
         if (this.animalManager) {
-          const bots = this.animalManager.animals.filter(a => a.type === 'builder');
+          const bots = this.animalManager.animals.filter(a => a instanceof BuilderBot);
           if (bots.length > 0) {
             bots.forEach(bot => {
-              bot.buildingMode = !bot.buildingMode;
-              bot.targetPos = bot.buildingMode ? null : this.player.position.clone();
+              bot.buildMode = !bot.buildMode;
+              if (bot.buildMode) {
+                bot.stopFollow();
+              } else {
+                bot.setFollowPlayer(this.player.position.clone());
+              }
             });
           }
         }
