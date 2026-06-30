@@ -443,6 +443,8 @@ export class BuilderBot extends Robot {
     this.totalBlocks = 0;
     this.buildOrigin = null;
     this.particles = [];
+    this.autoBuildDelay = 2 + Math.random() * 3; // 2-5秒后自动建造
+    this._autoBuildTriggered = false;
 
     this._buildModel();
   }
@@ -613,6 +615,15 @@ export class BuilderBot extends Robot {
   update(dt, center) {
     if (this.buildCooldown > 0) this.buildCooldown -= dt;
     this._animateAntenna(dt);
+
+    // 自动建造：出生后延迟几秒自动开始建造
+    if (!this._autoBuildTriggered && !this.buildMode) {
+      this.autoBuildDelay -= dt;
+      if (this.autoBuildDelay <= 0) {
+        this._autoBuildTriggered = true;
+        this.startRandomBuildNearPlayer(this.position);
+      }
+    }
 
     // 更新建造粒子
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -863,7 +874,7 @@ export class AnimalManager {
     return null;
   }
 
-  updateAll(dt, playerPos) {
+  update(dt, playerPos) {
     for (const robot of this.robots) {
       robot.update(dt, this.spawnCenter);
     }

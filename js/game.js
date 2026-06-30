@@ -8,9 +8,9 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1782820840';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782820840';
-import { GameAudio } from './audio.js?v=1782820840';
+} from './voxel.js?v=1782821229';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782821229';
+import { GameAudio } from './audio.js?v=1782821229';
 
 /* ============================================
    玩家类 - 第一人称角色控制
