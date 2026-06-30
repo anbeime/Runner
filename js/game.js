@@ -8,8 +8,9 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1782634540';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782634540';
+} from './voxel.js?v=1782819946';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782819946';
+import { GameAudio } from './audio.js?v=1782819946';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -660,6 +661,10 @@ class Game {
     
     // 云彩系统
     this.clouds = null;
+
+    // 背景音乐
+    this.audio = new GameAudio();
+    this._musicStarted = false;
   }
 
   /** 初始化游戏 */
@@ -1071,6 +1076,7 @@ class Game {
       this.ui.startScreen.addEventListener('click', () => {
         this.isRunning = true;
         this.ui.startScreen.style.display = 'none';
+        this._startMusic();
         // 相机从立墙预览切到玩家第一人称
         this.camera.position.set(this._spawnX, this._spawnY + this.player.eyeHeight, this._spawnZ);
         const lookDir = new THREE.Vector3(
@@ -1095,6 +1101,7 @@ class Game {
       this.ui.startScreen.addEventListener('click', () => {
         this.isRunning = true;
         this.ui.startScreen.style.display = 'none';
+        this._startMusic();
         // 相机从立墙预览切到玩家第一人称
         this.camera.position.set(this._spawnX, this._spawnY + this.player.eyeHeight, this._spawnZ);
         const lookDir = new THREE.Vector3(
@@ -1122,6 +1129,15 @@ class Game {
 
     // 窗口尺寸变化
     window.addEventListener('resize', () => this._onResize());
+
+    // 音乐开关按钮
+    const btnMusic = document.getElementById('btnMusic');
+    if (btnMusic) {
+      btnMusic.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._toggleMusic();
+      });
+    }
   }
 
   /** 显示/隐藏游戏HUD */
@@ -1140,6 +1156,44 @@ class Game {
     if (this.isMobile) {
       const mobileControls = document.getElementById('mobileControls');
       if (mobileControls) mobileControls.style.display = show ? 'block' : 'none';
+    }
+  }
+
+  /** 启动背景音乐 */
+  _startMusic() {
+    if (this._musicStarted) return;
+    this._musicStarted = true;
+    this.audio.init().then(() => {
+      this._updateMusicButton();
+    }).catch(() => {
+      // 浏览器可能不支持 Web Audio
+      this._musicStarted = false;
+    });
+  }
+
+  /** 切换音乐开关 */
+  _toggleMusic() {
+    if (!this._musicStarted) {
+      this._startMusic();
+      return;
+    }
+    const muted = this.audio.toggleMute();
+    this._updateMusicButton();
+  }
+
+  /** 更新音乐按钮图标 */
+  _updateMusicButton() {
+    const btn = document.getElementById('btnMusic');
+    if (!btn) return;
+    if (!this._musicStarted) {
+      btn.textContent = '🔇';
+      btn.title = '点击开启音乐';
+    } else if (this.audio.isMuted) {
+      btn.textContent = '🔇';
+      btn.title = '点击开启音乐';
+    } else {
+      btn.textContent = '🎵';
+      btn.title = '点击关闭音乐';
     }
   }
 
