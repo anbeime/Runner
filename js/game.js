@@ -8,9 +8,9 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1782820239';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782820239';
-import { GameAudio } from './audio.js?v=1782820239';
+} from './voxel.js?v=1782820840';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782820840';
+import { GameAudio } from './audio.js?v=1782820840';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -1032,19 +1032,31 @@ class Game {
         this._resetFOV();
       }
       
-      // B键 - 控制BuilderBot建造/跟随
+      // B键 - 命令BuilderBot在附近随机建造
       if (e.code === 'KeyB') {
         if (this.animalManager) {
-          const bots = this.animalManager.animals.filter(a => a instanceof BuilderBot);
+          const built = this.animalManager.commandBuildNearPlayer(this.player.position);
+          if (built) {
+            this._showMessage('BuilderBot 开始建造！');
+          } else {
+            this._showMessage('没有空闲的 BuilderBot');
+          }
+        }
+      }
+      
+      // V键 - 切换BuilderBot跟随/待命
+      if (e.code === 'KeyV') {
+        if (this.animalManager) {
+          const bots = this.animalManager.animals.filter(a => a instanceof BuilderBot && !a.buildMode);
           if (bots.length > 0) {
-            bots.forEach(bot => {
-              bot.buildMode = !bot.buildMode;
-              if (bot.buildMode) {
-                bot.stopFollow();
-              } else {
-                bot.setFollowPlayer(this.player.position.clone());
-              }
-            });
+            const bot = bots[0];
+            if (bot.followingPlayer) {
+              bot.stopFollow();
+              this._showMessage('BuilderBot 待命');
+            } else {
+              bot.setFollowPlayer(this.player.position.clone());
+              this._showMessage('BuilderBot 跟随中');
+            }
           }
         }
       }
@@ -1215,6 +1227,24 @@ class Game {
     });
   }
 
+  /** 显示短暂消息提示 */
+  _showMessage(msg) {
+    let el = document.getElementById('gameMsg');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'gameMsg';
+      el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);'
+        + 'color:#fff;font-size:20px;font-weight:bold;'
+        + 'text-shadow:2px 2px 4px rgba(0,0,0,0.8);'
+        + 'pointer-events:none;z-index:1000;transition:opacity 0.5s;';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(this._msgTimer);
+    this._msgTimer = setTimeout(() => { el.style.opacity = '0'; }, 2000);
+  }
+
   /** 切换音乐/音效开关（循环：全部开 → 仅音效 → 全部关 → 全部开） */
   _toggleMusic() {
     if (!this._musicStarted) {
@@ -1304,9 +1334,17 @@ class Game {
     const cz = Math.floor(pos.z / CHUNK_SIZE);
     const chunks = this.world.chunks.size;
 
-    // 获取机器人统计信息
     const robotStats = this.animalManager ? this.animalManager.getStats() : { scout: 0, heavy: 0, builder: 0 };
     const totalRobots = robotStats.scout + robotStats.heavy + robotStats.builder;
+
+    let buildInfo = '';
+    if (this.animalManager) {
+      const builders = this.animalManager.animals.filter(a => a instanceof BuilderBot && a.buildMode);
+      if (builders.length > 0) {
+        const b = builders[0];
+        buildInfo = `<br><span style="color:#FFD700">🏗️ ${b.currentStructure || '建造中'} ${b.getBuildProgress()}%</span>`;
+      }
+    }
 
     this.ui.debugInfo.innerHTML =
       `FPS: ${this.fps}<br>` +
@@ -1316,9 +1354,9 @@ class Game {
       `机器人: ${totalRobots} 只<br>` +
       `<span style="color:#5B9BD5">侦察: ${robotStats.scout}</span> | ` +
       `<span style="color:#E67E22">重型: ${robotStats.heavy}</span> | ` +
-      `<span style="color:#3498DB">建造: ${robotStats.builder}</span>`;
+      `<span style="color:#3498DB">建造: ${robotStats.builder}</span>` +
+      buildInfo;
 
-    // 目标方块提示（已禁用）
     this.ui.blockHighlight.style.display = 'none';
   }
 

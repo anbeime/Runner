@@ -1,6 +1,6 @@
 /**
- * 像素方块世界 - 机器人实体系统（AI完全体版）
- * 包含：ScoutBot（轻型侦察机器人）、HeavyBot（重型机器人）、BuilderBot（建造机器人）的体素模型、智能AI行为、生成管理
+ * 像素方块世界 - 机器人实体系统（AI完全体版 v2）
+ * 包含：ScoutBot、HeavyBot、BuilderBot（自主建造）的体素模型、智能AI、建筑模板
  * 参考：【当AI完全体进入我的世界！！】
  */
 import * as THREE from 'three';
@@ -9,8 +9,8 @@ import { BlockType, isSolid, CHUNK_SIZE } from './voxel.js';
 /* ============================================
    常量配置
    ============================================ */
-const SCOUT_COUNT = 5;        // 轻型机器人数量（替换牛）
-const HEAVY_COUNT = 3;        // 重型机器人数量（替换马）
+const SCOUT_COUNT = 5;
+const HEAVY_COUNT = 3;
 const MOBILE_SCOUT_COUNT = 2;
 const MOBILE_HEAVY_COUNT = 1;
 const SPAWN_RADIUS = 25;
@@ -24,12 +24,136 @@ function randRange(min, max) {
   return min + Math.random() * (max - min);
 }
 
-/** 伪随机（基于种子坐标） */
 function seedRand(x, z) {
   let h = (x * 374761393 + z * 668265263) ^ 1274126177;
   h = ((h ^ (h >> 13)) * 1274126177);
   return ((h ^ (h >> 16)) & 0x7fffffff) / 0x7fffffff;
 }
+
+/* ============================================
+   建筑模板 — 机器人可自主建造的结构
+   ============================================ */
+const STRUCTURES = {
+  smallHouse: {
+    name: '小房子',
+    icon: '🏠',
+    blocks: (() => {
+      const b = [];
+      // 地板 5x5
+      for (let x = 0; x < 5; x++) for (let z = 0; z < 5; z++)
+        b.push({ x, y: 0, z, type: BlockType.COBBLESTONE });
+      // 墙壁 3层
+      for (let y = 1; y <= 3; y++) {
+        for (let x = 0; x < 5; x++) {
+          b.push({ x, y, z: 0, type: BlockType.WOOD });
+          b.push({ x, y, z: 4, type: BlockType.WOOD });
+        }
+        for (let z = 1; z < 4; z++) {
+          b.push({ x: 0, y, z, type: BlockType.WOOD });
+          b.push({ x: 4, y, z, type: BlockType.WOOD });
+        }
+      }
+      // 门洞
+      b.push({ x: 2, y: 1, z: 0, type: BlockType.AIR });
+      b.push({ x: 2, y: 2, z: 0, type: BlockType.AIR });
+      // 窗户
+      b.push({ x: 1, y: 2, z: 4, type: BlockType.GLASS });
+      b.push({ x: 3, y: 2, z: 4, type: BlockType.GLASS });
+      // 屋顶
+      for (let x = 0; x < 5; x++) for (let z = -1; z <= 5; z++)
+        b.push({ x, y: 4, z, type: BlockType.STONE });
+      for (let x = 1; x < 4; x++) for (let z = 0; z <= 4; z++)
+        b.push({ x, y: 5, z, type: BlockType.STONE });
+      for (let x = 1; x < 4; x++) for (let z = 1; z <= 3; z++)
+        b.push({ x, y: 6, z, type: BlockType.STONE });
+      // 室内光源
+      b.push({ x: 2, y: 3, z: 3, type: BlockType.GLASS });
+      return b;
+    })(),
+  },
+
+  watchtower: {
+    name: '瞭望塔',
+    icon: '🗼',
+    blocks: (() => {
+      const b = [];
+      for (let x = 0; x < 3; x++) for (let z = 0; z < 3; z++)
+        b.push({ x, y: 0, z, type: BlockType.STONE });
+      for (let y = 1; y < 6; y++) {
+        b.push({ x: 0, y, z: 0, type: BlockType.COBBLESTONE });
+        b.push({ x: 0, y, z: 2, type: BlockType.COBBLESTONE });
+        b.push({ x: 2, y, z: 0, type: BlockType.COBBLESTONE });
+        b.push({ x: 2, y, z: 2, type: BlockType.COBBLESTONE });
+      }
+      for (let x = -1; x <= 3; x++) for (let z = -1; z <= 3; z++)
+        b.push({ x, y: 6, z, type: BlockType.WOOD });
+      for (let x = -1; x <= 3; x++) {
+        b.push({ x, y: 7, z: -1, type: BlockType.WOOD });
+        b.push({ x, y: 7, z: 3, type: BlockType.WOOD });
+      }
+      for (let z = -1; z <= 3; z++) {
+        b.push({ x: -1, y: 7, z, type: BlockType.WOOD });
+        b.push({ x: 3, y: 7, z, type: BlockType.WOOD });
+      }
+      b.push({ x: 1, y: 7, z: 1, type: BlockType.GLASS });
+      return b;
+    })(),
+  },
+
+  wall: {
+    name: '围墙',
+    icon: '🧱',
+    blocks: (() => {
+      const b = [];
+      for (let x = 0; x < 12; x++) {
+        for (let y = 0; y < 3; y++)
+          b.push({ x, y, z: 0, type: BlockType.COBBLESTONE });
+        if (x % 2 === 0) b.push({ x, y: 3, z: 0, type: BlockType.MOSSY_COBBLESTONE });
+      }
+      return b;
+    })(),
+  },
+
+  pixelHeart: {
+    name: '像素爱心',
+    icon: '💗',
+    blocks: (() => {
+      const heart = [
+        '...@@...@@...',
+        '..@@@@.@@@@..',
+        '.@@@@@@@@@@@.',
+        '.@@@@@@@@@@@.',
+        '..@@@@@@@@@..',
+        '...@@@@@@@...',
+        '....@@@@@....',
+        '.....@@@.....',
+        '......@......',
+      ];
+      const b = [];
+      for (let row = 0; row < heart.length; row++)
+        for (let col = 0; col < heart[row].length; col++)
+          if (heart[row][col] === '@')
+            b.push({ x: col, y: 0, z: row, type: BlockType.BILIBILI_PINK });
+      return b;
+    })(),
+  },
+
+  bridge: {
+    name: '桥梁',
+    icon: '🌉',
+    blocks: (() => {
+      const b = [];
+      for (let x = 0; x < 8; x++) {
+        for (let z = 0; z < 2; z++) b.push({ x, y: 0, z, type: BlockType.WOOD });
+        b.push({ x, y: 1, z: -1, type: BlockType.WOOD });
+        b.push({ x, y: 1, z: 2, type: BlockType.WOOD });
+      }
+      return b;
+    })(),
+  },
+};
+
+const STRUCTURE_KEYS = Object.keys(STRUCTURES);
 
 /* ============================================
    机器人基类
@@ -39,271 +163,244 @@ class Robot {
     this.scene = scene;
     this.world = world;
     this.position = new THREE.Vector3(x, y, z);
-    this.rotation = randRange(0, Math.PI * 2);
-    this.targetRotation = this.rotation;
-
-    // 碰撞体尺寸（子类可覆盖）
-    this.collisionWidth = 0.7;
-    this.collisionHeight = 0.9;
-
-    // AI 状态
-    this.state = 'idle';
-    this.stateTimer = randRange(1, 3);
-    this.wanderDir = new THREE.Vector3(0, 0, 1);
+    this.velocity = new THREE.Vector3();
+    this.rotation = 0;
+    this.targetRotation = 0;
+    this.state = 'idle'; // idle | wander | patrol | follow
+    this.stateTimer = randRange(2, 5);
+    this.wanderTarget = null;
     this.wanderSpeed = 1.5;
-    this.turnSpeed = 3.0;
-    this.bobPhase = Math.random() * Math.PI * 2;
+    this.turnSpeed = 2.0;
+    this.collisionWidth = 0.4;
+    this.collisionHeight = 0.8;
+    this.onGround = true;
+    this.jumpCooldown = 0;
+    this._animParts = [];
+    this._animTimer = 0;
+    this._animPhase = 0;
 
-    // Three.js 群组
     this.group = new THREE.Group();
     this.group.position.copy(this.position);
     this.group.rotation.y = this.rotation;
-    this.scene.add(this.group);
-
-    // 动画部件（子类填充：按 [前左, 前右, 后左, 后右] 顺序）
-    this._animParts = [];
+    scene.add(this.group);
   }
 
-  _buildModel() {}
-
-  get footY() {
-    return this.position.y;
-  }
-
-  _getGroundY(wx, wz) {
-    for (let wy = 48 - 1; wy >= 0; wy--) {
-      const block = this.world.getBlock(Math.floor(wx), wy, Math.floor(wz));
-      if (isSolid(block) && block !== BlockType.LEAVES) {
-        return wy + 1;
-      }
+  _getGroundY(px, pz) {
+    for (let y = 40; y >= 0; y--) {
+      const block = this.world.getBlock(Math.floor(px), y, Math.floor(pz));
+      if (isSolid(block)) return y + 1;
     }
     return 0;
   }
 
-  /** 检测指定位置是否有实体方块阻挡 */
-  _isBlocked(wx, wy, wz) {
-    const hw = this.collisionWidth / 2;
+  _isSafeStep(px, py, pz) {
+    const hw = this.collisionWidth * 0.5;
     const hh = this.collisionHeight;
-    for (let bx = Math.floor(wx - hw); bx <= Math.floor(wx + hw); bx++) {
-      for (let by = Math.floor(wy); by < Math.floor(wy + hh); by++) {
-        for (let bz = Math.floor(wz - hw); bz <= Math.floor(wz + hw); bz++) {
-          const block = this.world.getBlock(bx, by, bz);
-          if (isSolid(block) && block !== BlockType.LEAVES) {
-            return true;
-          }
+    for (let dy = 0; dy <= Math.ceil(hh); dy++) {
+      for (let dx = -hw; dx <= hw; dx += hw) {
+        for (let dz = -hw; dz <= hw; dz += hw) {
+          const bx = Math.floor(px + dx), by = Math.floor(py + dy), bz = Math.floor(pz + dz);
+          if (isSolid(this.world.getBlock(bx, by, bz))) return false;
         }
       }
     }
-    return false;
-  }
-
-  _isSafeStep(wx, wy, wz) {
-    // 检查脚下是否有支撑
-    const below = this.world.getBlock(Math.floor(wx), Math.floor(wy) - 1, Math.floor(wz));
-    if (!isSolid(below) || below === BlockType.LEAVES) return false;
-    // 检查是否踩水
-    const atFeet = this.world.getBlock(Math.floor(wx), Math.floor(wy), Math.floor(wz));
-    if (atFeet === BlockType.WATER) return false;
-    // 检查地面落差
-    const groundAhead = this._getGroundY(wx, wz);
-    if (Math.abs(groundAhead - wy) > 2) return false;
-    // 检查是否有实体方块阻挡
-    if (this._isBlocked(wx, wy, wz)) return false;
     return true;
   }
 
-  /** 四肢摆动动画 */
   _animateLimbs(dt) {
-    if (this._animParts.length === 0) return;
-    const swingAngle = Math.sin(this.bobPhase) * 0.45;
-    for (let i = 0; i < this._animParts.length; i++) {
-      const part = this._animParts[i];
-      // 对腿：前左+后右 相位与 前右+后左 相反
-      // _animParts 顺序：[前左, 前右, 后左, 后右]（4条腿）
-      //             或 [左臂, 右臂]（2条手臂）
-      const phaseSign = (i % 2 === 0) ? 1 : -1;
-      part.rotation.x = swingAngle * phaseSign;
+    this._animTimer += dt;
+    this._animPhase = Math.sin(this._animTimer * 8) * 0.3;
+    for (const part of this._animParts) {
+      if (part.userData && part.userData.animAxis) {
+        part.rotation[part.userData.animAxis] = this._animPhase;
+      } else {
+        part.rotation.x = this._animPhase * 0.5;
+      }
     }
   }
 
-  /** 重置四肢到默认角度 */
   _resetLimbs() {
     for (const part of this._animParts) {
-      part.rotation.x *= 0.85; // 平滑回位
+      part.rotation.x += (0 - part.rotation.x) * 0.1;
+      part.rotation.z += (0 - part.rotation.z) * 0.1;
     }
   }
 
-  update(dt, spawnCenter) {
-    dt = Math.min(dt, 0.1);
+  update(dt, center) {
+    if (this.jumpCooldown > 0) this.jumpCooldown -= dt;
     this.stateTimer -= dt;
-    this.bobPhase += dt * (this.state === 'wander' ? 5 : 1.5);
 
-    switch (this.state) {
-      case 'idle':
-        this._updateIdle(dt, spawnCenter);
-        this._resetLimbs();
-        break;
-      case 'wander':
-        this._updateWander(dt, spawnCenter);
-        this._animateLimbs(dt);
-        break;
-    }
-
-    // 平滑旋转
-    const rDiff = this.targetRotation - this.rotation;
-    let shortDiff = ((rDiff + Math.PI) % (Math.PI * 2)) - Math.PI;
-    this.rotation += shortDiff * Math.min(this.turnSpeed * dt, 1);
-    this.group.rotation.y = this.rotation;
-
-    // 行走时上下轻微摆动
-    const bob = this.state === 'wander' ? Math.sin(this.bobPhase) * 0.04 : 0;
-    this.group.position.set(this.position.x, this.position.y + bob, this.position.z);
-
-    // 天线摆动（子类实现）
-    this._animateAntenna(dt);
-  }
-
-  _animateAntenna(dt) {
-    // 子类可覆盖
-  }
-
-  _updateIdle(dt, spawnCenter) {
-    if (Math.random() < dt * 0.5) {
-      this.targetRotation += randRange(-0.5, 0.5);
-    }
-    if (this.stateTimer <= 0) {
+    // 状态转换
+    if (this.state === 'idle' && this.stateTimer <= 0) {
       this.state = 'wander';
-      this.stateTimer = randRange(2, 5);
-      this.wanderDir.set(
-        Math.cos(this.targetRotation), 0, Math.sin(this.targetRotation)
-      ).normalize();
+      const angle = Math.random() * Math.PI * 2;
+      const dist = randRange(3, WANDER_RANGE);
+      this.wanderTarget = new THREE.Vector3(
+        center.x + Math.cos(angle) * dist, 0,
+        center.z + Math.sin(angle) * dist
+      );
+      this.stateTimer = randRange(4, 10);
+    } else if (this.state === 'wander' && this.stateTimer <= 0) {
+      this.state = 'idle';
+      this.wanderTarget = null;
+      this.stateTimer = randRange(1, 4);
+      this._resetLimbs();
+    }
+
+    // 执行行为
+    if (this.state === 'wander' && this.wanderTarget) {
+      this._doWander(dt);
     }
   }
 
-  _updateWander(dt, spawnCenter) {
+  _doWander(dt) {
+    const dx = this.wanderTarget.x - this.position.x;
+    const dz = this.wanderTarget.z - this.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    if (dist < 1.0) {
+      this.state = 'idle';
+      this.wanderTarget = null;
+      this.stateTimer = randRange(1, 4);
+      this._resetLimbs();
+      return;
+    }
+
+    const dirX = dx / dist;
+    const dirZ = dz / dist;
     const step = this.wanderSpeed * dt;
-    const nx = this.position.x + this.wanderDir.x * step;
-    const nz = this.position.z + this.wanderDir.z * step;
+    const nx = this.position.x + dirX * step;
+    const nz = this.position.z + dirZ * step;
     const ny = this._getGroundY(nx, nz);
 
-    const distFromCenter = Math.sqrt(
-      (nx - spawnCenter.x) ** 2 + (nz - spawnCenter.z) ** 2
-    );
-
-    if (this._isSafeStep(nx, ny, nz) && distFromCenter < WANDER_RANGE) {
+    if (this._isSafeStep(nx, ny, nz)) {
       this.position.x = nx;
       this.position.z = nz;
       this.position.y = ny;
-      this.targetRotation = Math.atan2(this.wanderDir.z, this.wanderDir.x);
-    } else {
-      this.targetRotation += randRange(Math.PI * 0.4, Math.PI * 0.8) * (Math.random() > 0.5 ? 1 : -1);
-      this.wanderDir.set(Math.cos(this.targetRotation), 0, Math.sin(this.targetRotation)).normalize();
-      this.stateTimer = Math.max(this.stateTimer, 0.5);
     }
-
-    if (Math.random() < dt * 0.3) {
-      this.targetRotation += randRange(-0.8, 0.8);
-      this.wanderDir.set(Math.cos(this.targetRotation), 0, Math.sin(this.targetRotation)).normalize();
-    }
-
-    if (this.stateTimer <= 0) {
-      this.state = 'idle';
-      this.stateTimer = randRange(1, 4);
-    }
+    this.targetRotation = Math.atan2(dirZ, dirX);
+    this._animateLimbs(dt);
   }
 
   dispose() {
-    if (this.group) {
-      this.group.traverse(child => {
-        if (child.geometry) child.geometry.dispose();
-        if (child.material) child.material.dispose();
-      });
-      this.scene.remove(this.group);
-    }
+    this.scene.remove(this.group);
+    this.group.traverse(c => {
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) c.material.dispose();
+    });
   }
 }
 
 /* ============================================
-   轻型侦察机器人 (ScoutBot) — 替换牛
-   小巧灵活，蓝色眼睛，单天线
+   轻型侦察机器人 (ScoutBot)
    ============================================ */
 export class ScoutBot extends Robot {
   constructor(scene, world, x, y, z) {
     super(scene, world, x, y, z);
-    this.collisionWidth = 0.7;
-    this.collisionHeight = 1.0;
-    this.wanderSpeed = 1.4;
-    this.turnSpeed = 2.8;
-    this.antennaAngle = 0;
+    this.collisionWidth = 0.3;
+    this.collisionHeight = 0.6;
+    this.wanderSpeed = 3.5;
+    this.turnSpeed = 5.0;
     this._buildModel();
   }
 
   _buildModel() {
-    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xB0B8C0 });    // 银灰
-    const darkMat = new THREE.MeshLambertMaterial({ color: 0x3A3E44 });    // 深灰
-    const accentMat = new THREE.MeshLambertMaterial({ color: 0x4A90D9 });  // 蓝色点缀
-    const redMat = new THREE.MeshLambertMaterial({ color: 0xFF4444 });     // 红色指示灯
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x66D9FF });       // 发光蓝眼睛
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0xC0C0C0 });
+    const darkMat = new THREE.MeshLambertMaterial({ color: 0x505050 });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x4488FF });
 
-    // ── 身体（主躯干）──
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.9), bodyMat);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.25, 0.45), bodyMat);
+    body.position.set(0, 0.35, 0);
+    this.group.add(body);
+
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.2, 0.3), darkMat);
+    head.position.set(0, 0.55, 0.15);
+    this.group.add(head);
+
+    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.03), eyeMat);
+    eye.position.set(0, 0.58, 0.32);
+    eye.name = 'eye';
+    this.group.add(eye);
+
+    const antGeo = new THREE.BoxGeometry(0.03, 0.25, 0.03);
+    const ant = new THREE.Mesh(antGeo, darkMat);
+    ant.position.set(0, 0.78, 0.12);
+    this.group.add(ant);
+    const ball = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), new THREE.MeshBasicMaterial({ color: 0xFF3333 }));
+    ball.position.set(0, 0.92, 0.12);
+    ball.name = 'antennaBall';
+    this.group.add(ball);
+
+    const legs = [[0.12, 0.18, 0.15], [-0.12, 0.18, 0.15], [0.12, 0.18, -0.15], [-0.12, 0.18, -0.15]];
+    for (const [lx, ly, lz] of legs) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.2, 0.06), darkMat);
+      leg.position.set(lx, ly, lz);
+      this.group.add(leg);
+      this._animParts.push(leg);
+    }
+  }
+
+  update(dt, center) {
+    super.update(dt, center);
+    // 天线闪烁
+    const ball = this.group.getObjectByName('antennaBall');
+    if (ball) ball.material.color.setRGB(0.5 + Math.sin(Date.now() * 0.01) * 0.5, 0.2, 0.2);
+    const eye = this.group.getObjectByName('eye');
+    if (eye) eye.material.color.setRGB(0.2, 0.2, 0.5 + Math.sin(Date.now() * 0.008) * 0.5);
+  }
+
+  getInfo() {
+    return { name: 'ScoutBot', type: '侦察机器人', status: this.state === 'wander' ? '巡逻中' : '待命', color: '银灰' };
+  }
+}
+
+/* ============================================
+   重型机器人 (HeavyBot)
+   ============================================ */
+export class HeavyBot extends Robot {
+  constructor(scene, world, x, y, z) {
+    super(scene, world, x, y, z);
+    this.collisionWidth = 0.5;
+    this.collisionHeight = 0.9;
+    this.wanderSpeed = 1.2;
+    this.turnSpeed = 1.5;
+    this._buildModel();
+  }
+
+  _buildModel() {
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x3A3A3A });
+    const darkMat = new THREE.MeshLambertMaterial({ color: 0x1A1A1A });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xFF8800 });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.6), bodyMat);
     body.position.set(0, 0.45, 0);
     this.group.add(body);
 
-    // 胸甲面板
-    const chestPanel = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.06), accentMat);
-    chestPanel.position.set(0, 0.5, 0.48);
-    this.group.add(chestPanel);
-
-    // 核心指示灯（胸口发光点）
-    const coreLight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.04), eyeMat);
-    coreLight.position.set(0, 0.5, 0.52);
-    this.group.add(coreLight);
-
-    // ── 头部 ──
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.4, 0.45), bodyMat);
-    head.position.set(0, 0.85, 0.35);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.4), darkMat);
+    head.position.set(0, 0.72, 0.2);
     this.group.add(head);
 
-    // 面罩（深色面板）
-    const faceplate = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.28, 0.04), darkMat);
-    faceplate.position.set(0, 0.85, 0.58);
-    this.group.add(faceplate);
-
-    // 眼睛（两个蓝色发光方块）
-    const eyeGeo = new THREE.BoxGeometry(0.1, 0.08, 0.03);
+    const eyeGeo = new THREE.BoxGeometry(0.1, 0.07, 0.03);
     const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeL.position.set(0.1, 0.92, 0.6);
+    eyeL.position.set(0.09, 0.76, 0.42);
     this.group.add(eyeL);
     const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeR.position.set(-0.1, 0.92, 0.6);
+    eyeR.position.set(-0.09, 0.76, 0.42);
     this.group.add(eyeR);
 
-    // ── 天线（一根金属棒 + 红色小球）──
-    const antennaPole = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.25, 0.06), darkMat);
-    antennaPole.position.set(0, 1.15, 0.3);
-    this.group.add(antennaPole);
-    const antennaBall = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), redMat);
-    antennaBall.position.set(0, 1.28, 0.3);
-    antennaBall.name = 'antennaBall';
-    this.group.add(antennaBall);
+    const antGeo = new THREE.BoxGeometry(0.04, 0.2, 0.04);
+    const ant = new THREE.Mesh(antGeo, darkMat);
+    ant.position.set(0, 0.96, 0.18);
+    this.group.add(ant);
+    const ball = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.07), new THREE.MeshBasicMaterial({ color: 0xFF6600 }));
+    ball.position.set(0, 1.08, 0.18);
+    ball.name = 'antennaBallH';
+    this.group.add(ball);
 
-    // ── 侧面板（手臂位置）──
-    const sideL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 0.2), darkMat);
-    sideL.position.set(0.42, 0.45, 0);
-    this.group.add(sideL);
-    const sideR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.3, 0.2), darkMat);
-    sideR.position.set(-0.42, 0.45, 0);
-    this.group.add(sideR);
-
-    // ── 腿部（四条机械腿）──
-    const legGeo = new THREE.BoxGeometry(0.16, 0.35, 0.16);
-    const legMat = new THREE.MeshLambertMaterial({ color: 0x6B7280 });
-    const legs = [
-      [0.18, 0.17, 0.28], [-0.18, 0.17, 0.28],
-      [0.18, 0.17, -0.28], [-0.18, 0.17, -0.28],
-    ];
-    for (const [lx, ly, lz] of legs) {
+    const legGeo = new THREE.BoxGeometry(0.1, 0.28, 0.1);
+    const legMat = new THREE.MeshLambertMaterial({ color: 0x2A2A2A });
+    const legPos = [[0.15, 0.2, 0.2], [-0.15, 0.2, 0.2], [0.15, 0.2, -0.2], [-0.15, 0.2, -0.2]];
+    for (const [lx, ly, lz] of legPos) {
       const leg = new THREE.Mesh(legGeo, legMat);
       leg.position.set(lx, ly, lz);
       this.group.add(leg);
@@ -311,148 +408,20 @@ export class ScoutBot extends Robot {
     }
   }
 
-  _animateAntenna(dt) {
-    this.antennaAngle += dt * 2;
-    const ball = this.group.getObjectByName('antennaBall');
-    if (ball) {
-      ball.position.x = Math.sin(this.antennaAngle) * 0.04;
-    }
+  update(dt, center) {
+    super.update(dt, center);
+    const ball = this.group.getObjectByName('antennaBallH');
+    if (ball) ball.material.color.setRGB(1, 0.3 + Math.sin(Date.now() * 0.005) * 0.3, 0);
+  }
+
+  getInfo() {
+    return { name: 'HeavyBot', type: '重型机器人', status: this.state === 'wander' ? '巡逻中' : '待命', color: '暗灰' };
   }
 }
 
 /* ============================================
-   重型机器人 (HeavyBot) — 替换马
-   更大更强壮，橙色眼睛，双天线，履带式腿
-   ============================================ */
-export class HeavyBot extends Robot {
-  constructor(scene, world, x, y, z) {
-    super(scene, world, x, y, z);
-    this.collisionWidth = 0.85;
-    this.collisionHeight = 1.15;
-    this.wanderSpeed = 1.0;
-    this.turnSpeed = 2.0;
-    this.antennaAngle = 0;
-    this._buildModel();
-  }
-
-  _buildModel() {
-    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x889098 });    // 深银灰
-    const darkMat = new THREE.MeshLambertMaterial({ color: 0x2D3136 });    // 暗灰
-    const accentMat = new THREE.MeshLambertMaterial({ color: 0xE8833A });  // 橙色点缀
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xFFB866 });       // 发光橙黄眼睛
-    const redMat = new THREE.MeshLambertMaterial({ color: 0xFF3333 });
-
-    // ── 身体（重型躯干）──
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.65, 1.2), bodyMat);
-    body.position.set(0, 0.55, 0);
-    this.group.add(body);
-
-    // 肩部装甲
-    const shoulderL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.3), darkMat);
-    shoulderL.position.set(0.5, 0.7, 0.2);
-    this.group.add(shoulderL);
-    const shoulderR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.3), darkMat);
-    shoulderR.position.set(-0.5, 0.7, 0.2);
-    this.group.add(shoulderR);
-
-    // 胸部面板 + 指示灯
-    const chestPanel = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.4, 0.06), accentMat);
-    chestPanel.position.set(0, 0.6, 0.63);
-    this.group.add(chestPanel);
-    const coreLight = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.04), eyeMat);
-    coreLight.position.set(0, 0.6, 0.67);
-    this.group.add(coreLight);
-
-    // ── 头部 ──
-    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.45, 0.5), bodyMat);
-    head.position.set(0, 0.95, 0.45);
-    this.group.add(head);
-
-    // 面罩
-    const faceplate = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.3, 0.04), darkMat);
-    faceplate.position.set(0, 0.95, 0.71);
-    this.group.add(faceplate);
-
-    // 眼睛（两个橙色发光方块，稍大）
-    const eyeGeo = new THREE.BoxGeometry(0.12, 0.1, 0.03);
-    const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeL.position.set(0.12, 1.03, 0.73);
-    this.group.add(eyeL);
-    const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
-    eyeR.position.set(-0.12, 1.03, 0.73);
-    this.group.add(eyeR);
-
-    // ── 双天线 ──
-    const antGeo = new THREE.BoxGeometry(0.06, 0.28, 0.06);
-    const antL = new THREE.Mesh(antGeo, darkMat);
-    antL.position.set(0.1, 1.25, 0.4);
-    this.group.add(antL);
-    const antR = new THREE.Mesh(antGeo, darkMat);
-    antR.position.set(-0.1, 1.25, 0.4);
-    this.group.add(antR);
-    const ballL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), redMat);
-    ballL.position.set(0.1, 1.4, 0.4);
-    ballL.name = 'antennaBallL';
-    this.group.add(ballL);
-    const ballR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), redMat);
-    ballR.position.set(-0.1, 1.4, 0.4);
-    ballR.name = 'antennaBallR';
-    this.group.add(ballR);
-
-    // ── 手臂（重型机械臂）──
-    const armGeo = new THREE.BoxGeometry(0.18, 0.4, 0.2);
-    const armMat = new THREE.MeshLambertMaterial({ color: 0x5A6068 });
-    const armL = new THREE.Mesh(armGeo, armMat);
-    armL.position.set(0.5, 0.5, 0.15);
-    this.group.add(armL);
-    this._animParts.push(armL);
-    const armR = new THREE.Mesh(armGeo, armMat);
-    armR.position.set(-0.5, 0.5, 0.15);
-    this.group.add(armR);
-    this._animParts.push(armR);
-
-    // ── 履带式腿部（两块大方块模拟履带）──
-    const treadGeo = new THREE.BoxGeometry(0.3, 0.25, 0.9);
-    const treadMat = new THREE.MeshLambertMaterial({ color: 0x3A3E44 });
-    const treadL = new THREE.Mesh(treadGeo, treadMat);
-    treadL.position.set(0.3, 0.12, 0);
-    this.group.add(treadL);
-    const treadR = new THREE.Mesh(treadGeo, treadMat);
-    treadR.position.set(-0.3, 0.12, 0);
-    this.group.add(treadR);
-
-    // 履带纹理细节（小方块模拟履带片）
-    for (let i = -2; i <= 2; i++) {
-      const detailGeo = new THREE.BoxGeometry(0.34, 0.04, 0.1);
-      const detailL = new THREE.Mesh(detailGeo, accentMat);
-      detailL.position.set(0.3, 0.02, i * 0.28);
-      this.group.add(detailL);
-      const detailR = new THREE.Mesh(detailGeo, accentMat);
-      detailR.position.set(-0.3, 0.02, i * 0.28);
-      this.group.add(detailR);
-      // 顶部履带片
-      const detailTL = new THREE.Mesh(detailGeo, accentMat);
-      detailTL.position.set(0.3, 0.24, i * 0.28);
-      this.group.add(detailTL);
-      const detailTR = new THREE.Mesh(detailGeo, accentMat);
-      detailTR.position.set(-0.3, 0.24, i * 0.28);
-      this.group.add(detailTR);
-    }
-  }
-
-  _animateAntenna(dt) {
-    this.antennaAngle += dt * 1.8;
-    const ballL = this.group.getObjectByName('antennaBallL');
-    const ballR = this.group.getObjectByName('antennaBallR');
-    const offset = Math.sin(this.antennaAngle) * 0.05;
-    if (ballL) ballL.position.x = 0.1 + offset;
-    if (ballR) ballR.position.x = -0.1 - offset;
-  }
-}
-
-/* ============================================
-   建造机器人 (BuilderBot) — AI核心！
-   能自动建造简单结构，跟随玩家，展示AI能力
+   建造机器人 (BuilderBot) — 自主AI建造者
+   能自动建造房屋、围墙、塔楼、像素艺术等
    ============================================ */
 export class BuilderBot extends Robot {
   constructor(scene, world, x, y, z) {
@@ -462,51 +431,50 @@ export class BuilderBot extends Robot {
     this.wanderSpeed = 1.8;
     this.turnSpeed = 3.0;
     this.antennaAngle = 0;
-    
-    // 建造AI状态
+
     this.buildMode = false;
     this.buildTarget = null;
     this.buildQueue = [];
     this.buildCooldown = 0;
     this.followingPlayer = false;
     this.playerTarget = null;
-    
+    this.currentStructure = null;
+    this.buildProgress = 0;
+    this.totalBlocks = 0;
+    this.buildOrigin = null;
+    this.particles = [];
+
     this._buildModel();
   }
 
   _buildModel() {
-    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x4A90D9 });    // 科技蓝
-    const darkMat = new THREE.MeshLambertMaterial({ color: 0x1E3A5F });    // 深蓝
-    const accentMat = new THREE.MeshLambertMaterial({ color: 0xFFD700 });  // 金色点缀
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00FF88 });       // 发光绿眼睛（AI指示）
-    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00FFFF });      // 青色发光
-    
-    // ── 身体（科技躯干）──
+    const bodyMat = new THREE.MeshLambertMaterial({ color: 0x4A90D9 });
+    const darkMat = new THREE.MeshLambertMaterial({ color: 0x1E3A5F });
+    const accentMat = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x00FF88 });
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0x00FFFF });
+
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.7, 0.8), bodyMat);
     body.position.set(0, 0.5, 0);
     this.group.add(body);
-    
-    // 胸部核心（发光AI核心）
+
     const corePanel = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.35, 0.05), darkMat);
     corePanel.position.set(0, 0.55, 0.43);
     this.group.add(corePanel);
-    
+
     const aiCore = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.03), glowMat);
     aiCore.position.set(0, 0.55, 0.46);
     aiCore.name = 'aiCore';
     this.group.add(aiCore);
-    
-    // ── 头部 ──
+
     const head = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.35, 0.4), bodyMat);
     head.position.set(0, 0.82, 0.25);
     this.group.add(head);
-    
-    // 面罩（显示面板）
+
     const faceplate = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.03), darkMat);
     faceplate.position.set(0, 0.82, 0.47);
     this.group.add(faceplate);
-    
-    // 眼睛（两个绿色发光方块）
+
     const eyeGeo = new THREE.BoxGeometry(0.08, 0.06, 0.02);
     const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
     eyeL.position.set(0.08, 0.88, 0.49);
@@ -514,10 +482,8 @@ export class BuilderBot extends Robot {
     const eyeR = new THREE.Mesh(eyeGeo, eyeMat);
     eyeR.position.set(-0.08, 0.88, 0.49);
     this.group.add(eyeR);
-    
-    // ── 三天线（三角形排列）──
+
     const antGeo = new THREE.BoxGeometry(0.04, 0.22, 0.04);
-    // 中央天线
     const antC = new THREE.Mesh(antGeo, darkMat);
     antC.position.set(0, 1.08, 0.22);
     this.group.add(antC);
@@ -525,8 +491,7 @@ export class BuilderBot extends Robot {
     ballC.position.set(0, 1.2, 0.22);
     ballC.name = 'antennaBallC';
     this.group.add(ballC);
-    
-    // 左天线
+
     const antL = new THREE.Mesh(antGeo, darkMat);
     antL.position.set(0.12, 1.05, 0.22);
     this.group.add(antL);
@@ -534,8 +499,7 @@ export class BuilderBot extends Robot {
     ballL.position.set(0.12, 1.17, 0.22);
     ballL.name = 'antennaBallL2';
     this.group.add(ballL);
-    
-    // 右天线
+
     const antR = new THREE.Mesh(antGeo, darkMat);
     antR.position.set(-0.12, 1.05, 0.22);
     this.group.add(antR);
@@ -543,20 +507,18 @@ export class BuilderBot extends Robot {
     ballR.position.set(-0.12, 1.17, 0.22);
     ballR.name = 'antennaBallR2';
     this.group.add(ballR);
-    
-    // ── 机械手臂（建造工具）──
+
     const armGeo = new THREE.BoxGeometry(0.12, 0.35, 0.15);
     const armMat = new THREE.MeshLambertMaterial({ color: 0x3A5F8F });
-    const armL = new THREE.Mesh(armGeo, armMat);
-    armL.position.set(0.36, 0.45, 0.1);
-    this.group.add(armL);
-    this._animParts.push(armL);
-    const armR = new THREE.Mesh(armGeo, armMat);
-    armR.position.set(-0.36, 0.45, 0.1);
-    this.group.add(armR);
-    this._animParts.push(armR);
-    
-    // 建造工具（手臂末端）
+    const armL2 = new THREE.Mesh(armGeo, armMat);
+    armL2.position.set(0.36, 0.45, 0.1);
+    this.group.add(armL2);
+    this._animParts.push(armL2);
+    const armR2 = new THREE.Mesh(armGeo, armMat);
+    armR2.position.set(-0.36, 0.45, 0.1);
+    this.group.add(armR2);
+    this._animParts.push(armR2);
+
     const toolGeo = new THREE.BoxGeometry(0.08, 0.08, 0.12);
     const toolL = new THREE.Mesh(toolGeo, accentMat);
     toolL.position.set(0.36, 0.28, 0.18);
@@ -566,14 +528,10 @@ export class BuilderBot extends Robot {
     toolR.position.set(-0.36, 0.28, 0.18);
     toolR.name = 'buildToolR';
     this.group.add(toolR);
-    
-    // ── 腿部（机械关节腿）──
+
     const legGeo = new THREE.BoxGeometry(0.14, 0.32, 0.14);
     const legMat = new THREE.MeshLambertMaterial({ color: 0x5A7FAF });
-    const legs = [
-      [0.15, 0.16, 0.22], [-0.15, 0.16, 0.22],
-      [0.15, 0.16, -0.22], [-0.15, 0.16, -0.22],
-    ];
+    const legs = [[0.15, 0.16, 0.22], [-0.15, 0.16, 0.22], [0.15, 0.16, -0.22], [-0.15, 0.16, -0.22]];
     for (const [lx, ly, lz] of legs) {
       const leg = new THREE.Mesh(legGeo, legMat);
       leg.position.set(lx, ly, lz);
@@ -585,89 +543,138 @@ export class BuilderBot extends Robot {
   _animateAntenna(dt) {
     this.antennaAngle += dt * 3;
     const ballC = this.group.getObjectByName('antennaBallC');
+    if (ballC) ballC.position.y = 1.2 + Math.sin(this.antennaAngle) * 0.02;
     const ballL = this.group.getObjectByName('antennaBallL2');
+    if (ballL) ballL.position.x = 0.12 + Math.sin(this.antennaAngle * 1.5) * 0.02;
     const ballR = this.group.getObjectByName('antennaBallR2');
-    
-    if (ballC) {
-      ballC.position.y = 1.2 + Math.sin(this.antennaAngle) * 0.02;
-    }
-    if (ballL) {
-      ballL.position.x = 0.12 + Math.sin(this.antennaAngle * 1.5) * 0.02;
-    }
-    if (ballR) {
-      ballR.position.x = -0.12 - Math.sin(this.antennaAngle * 1.5) * 0.02;
-    }
-    
-    // AI核心闪烁
+    if (ballR) ballR.position.x = -0.12 - Math.sin(this.antennaAngle * 1.5) * 0.02;
     const aiCore = this.group.getObjectByName('aiCore');
     if (aiCore) {
-      const pulse = 0.5 + Math.sin(this.antennaAngle * 2) * 0.5;
+      const pulse = this.buildMode ? (0.5 + Math.sin(this.antennaAngle * 4) * 0.5) : (0.5 + Math.sin(this.antennaAngle * 2) * 0.5);
       aiCore.material.color.setRGB(pulse, 1, pulse);
     }
   }
 
-  // 设置跟随玩家
+  /** 开始建造指定结构 */
+  startBuilding(structureName, originX, originY, originZ) {
+    const template = STRUCTURES[structureName];
+    if (!template) return false;
+    this.buildMode = true;
+    this.currentStructure = structureName;
+    this.buildOrigin = { x: originX, y: originY, z: originZ };
+    this.buildQueue = template.blocks.map(b => ({
+      x: originX + b.x,
+      y: originY + b.y,
+      z: originZ + b.z,
+      type: b.type,
+    }));
+    this.totalBlocks = this.buildQueue.length;
+    this.buildProgress = 0;
+    this.buildTarget = null;
+    return true;
+  }
+
+  /** 在玩家附近随机建造 */
+  startRandomBuildNearPlayer(playerPos) {
+    const key = STRUCTURE_KEYS[Math.floor(Math.random() * STRUCTURE_KEYS.length)];
+    const template = STRUCTURES[key];
+    const angle = Math.random() * Math.PI * 2;
+    const dist = randRange(5, 15);
+    const ox = Math.floor(playerPos.x + Math.cos(angle) * dist);
+    const oz = Math.floor(playerPos.z + Math.sin(angle) * dist);
+    let oy = 20;
+    for (let y = 40; y >= 1; y--) {
+      if (isSolid(this.world.getBlock(ox, y, oz))) { oy = y + 1; break; }
+    }
+    if (oy < 1 || oy > 40) return false;
+    this.setFollowPlayer(null);
+    this.stopFollow();
+    return this.startBuilding(key, ox, oy, oz);
+  }
+
   setFollowPlayer(playerPos) {
     this.followingPlayer = true;
-    this.playerTarget = playerPos.clone();
+    this.playerTarget = playerPos ? playerPos.clone() : null;
     this.state = 'follow';
   }
 
-  // 停止跟随
   stopFollow() {
     this.followingPlayer = false;
     this.playerTarget = null;
     this.state = 'idle';
   }
 
-  // 建造方块
-  tryBuildBlock() {
-    if (this.buildCooldown > 0 || !this.buildTarget) return false;
-    
-    const { x, y, z, type } = this.buildTarget;
-    this.world.setBlock(x, y, z, type);
-    this.buildCooldown = 0.5; // 建造冷却
-    this.buildTarget = null;
-    return true;
+  /** 获取建造进度百分比 */
+  getBuildProgress() {
+    if (!this.buildMode || this.totalBlocks === 0) return 0;
+    return Math.round((this.buildProgress / this.totalBlocks) * 100);
   }
 
   update(dt, center) {
-    // 建造冷却
-    if (this.buildCooldown > 0) {
-      this.buildCooldown -= dt;
+    if (this.buildCooldown > 0) this.buildCooldown -= dt;
+    this._animateAntenna(dt);
+
+    // 更新建造粒子
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const p = this.particles[i];
+      p.life -= dt;
+      if (p.life <= 0) {
+        this.scene.remove(p.mesh);
+        p.mesh.geometry.dispose();
+        p.mesh.material.dispose();
+        this.particles.splice(i, 1);
+      } else {
+        p.mesh.position.y += dt * 2;
+        p.mesh.material.opacity = p.life / p.maxLife;
+        p.mesh.scale.setScalar(p.life / p.maxLife);
+      }
     }
 
-    // 跟随玩家逻辑
+    // 建造模式
+    if (this.buildMode && this.buildQueue.length > 0) {
+      this._buildStep(dt);
+      return; // 建造时不移动
+    }
+
+    // 建造完成
+    if (this.buildMode && this.buildQueue.length === 0) {
+      this.buildMode = false;
+      this.currentStructure = null;
+      this.buildOrigin = null;
+      this.state = 'idle';
+    }
+
+    // 跟随玩家
     if (this.state === 'follow' && this.playerTarget) {
       this._updateFollow(dt, center);
     } else {
       super.update(dt, center);
     }
-    
-    // 尝试建造
-    if (this.buildTarget && this.buildCooldown <= 0) {
-      this.tryBuildBlock();
-    }
   }
 
-  _updateFollow(dt, center) {
-    if (!this.playerTarget) {
-      this.state = 'idle';
-      return;
+  _buildStep(dt) {
+    // 如果当前位置远离建造目标，先移动过去
+    if (!this.buildTarget && this.buildQueue.length > 0) {
+      this.buildTarget = this.buildQueue.shift();
     }
-    const dx = this.playerTarget.x - this.position.x;
-    const dz = this.playerTarget.z - this.position.z;
+
+    if (!this.buildTarget) return;
+
+    const tx = this.buildTarget.x + 0.5;
+    const ty = this.buildTarget.y;
+    const tz = this.buildTarget.z + 0.5;
+    const dx = tx - this.position.x;
+    const dz = tz - this.position.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
 
-    if (dist > 2.5) {
-      // 向玩家移动
+    if (dist > 1.0) {
+      // 移动到目标位置
       const dirX = dx / dist;
       const dirZ = dz / dist;
       const step = this.wanderSpeed * dt;
       const nx = this.position.x + dirX * step;
       const nz = this.position.z + dirZ * step;
       const ny = this._getGroundY(nx, nz);
-
       if (this._isSafeStep(nx, ny, nz)) {
         this.position.x = nx;
         this.position.z = nz;
@@ -676,23 +683,72 @@ export class BuilderBot extends Robot {
       this.targetRotation = Math.atan2(dirZ, dirX);
       this._animateLimbs(dt);
     } else {
-      // 到达玩家附近，待命
+      // 到达位置，放置方块
+      if (this.buildCooldown <= 0) {
+        if (this.buildTarget.type === BlockType.AIR) {
+          // 移除方块
+          this.world.setBlock(this.buildTarget.x, this.buildTarget.y, this.buildTarget.z, BlockType.AIR);
+        } else {
+          this.world.setBlock(this.buildTarget.x, this.buildTarget.y, this.buildTarget.z, this.buildTarget.type);
+        }
+        this._spawnBuildParticles(this.buildTarget.x + 0.5, this.buildTarget.y + 0.5, this.buildTarget.z + 0.5);
+        this.buildProgress++;
+        this.buildCooldown = 0.15; // 快速建造
+        this.buildTarget = null;
+      }
+    }
+  }
+
+  _spawnBuildParticles(px, py, pz) {
+    for (let i = 0; i < 5; i++) {
+      const geo = new THREE.BoxGeometry(0.03, 0.03, 0.03);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xFFD700, transparent: true, opacity: 1 });
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        px + (Math.random() - 0.5) * 0.5,
+        py + Math.random() * 0.3,
+        pz + (Math.random() - 0.5) * 0.5
+      );
+      this.scene.add(mesh);
+      this.particles.push({ mesh, life: 0.5 + Math.random() * 0.5, maxLife: 0.5 + Math.random() * 0.5 });
+    }
+  }
+
+  _updateFollow(dt, center) {
+    if (!this.playerTarget) { this.state = 'idle'; return; }
+    const dx = this.playerTarget.x - this.position.x;
+    const dz = this.playerTarget.z - this.position.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist > 3.0) {
+      const dirX = dx / dist, dirZ = dz / dist;
+      const step = this.wanderSpeed * dt;
+      const nx = this.position.x + dirX * step, nz = this.position.z + dirZ * step;
+      const ny = this._getGroundY(nx, nz);
+      if (this._isSafeStep(nx, ny, nz)) {
+        this.position.x = nx; this.position.z = nz; this.position.y = ny;
+      }
+      this.targetRotation = Math.atan2(dirZ, dirX);
+      this._animateLimbs(dt);
+    } else {
       this._resetLimbs();
     }
   }
 
   getInfo() {
-    return {
-      name: 'BuilderBot',
-      type: '建造机器人',
-      status: this.followingPlayer ? '跟随玩家' : (this.buildMode ? '建造中' : '待命'),
-      color: '科技蓝',
-    };
+    let status;
+    if (this.buildMode) {
+      status = `建造中 ${this.currentStructure ? STRUCTURES[this.currentStructure].name : ''} ${this.getBuildProgress()}%`;
+    } else if (this.followingPlayer) {
+      status = '跟随玩家';
+    } else {
+      status = '待命';
+    }
+    return { name: 'BuilderBot', type: '建造机器人', status, color: '科技蓝' };
   }
 }
 
 /* ============================================
-   机器人生成管理器（增强版）
+   机器人生成管理器
    ============================================ */
 export class AnimalManager {
   constructor(scene, world, isMobile = false) {
@@ -704,17 +760,14 @@ export class AnimalManager {
     this._spawned = false;
   }
 
-  get animals() {
-    return this.robots;
-  }
+  get animals() { return this.robots; }
 
   spawnAnimals() {
     if (this._spawned) return;
     this._spawned = true;
-
     const scoutCount = this.isMobile ? MOBILE_SCOUT_COUNT : SCOUT_COUNT;
     const heavyCount = this.isMobile ? MOBILE_HEAVY_COUNT : HEAVY_COUNT;
-    const builderCount = this.isMobile ? 1 : 2; // BuilderBot 数量
+    const builderCount = this.isMobile ? 1 : 2;
     const usedPositions = [];
 
     const trySpawn = (type) => {
@@ -723,46 +776,39 @@ export class AnimalManager {
         const dist = randRange(5, SPAWN_RADIUS);
         const sx = this.spawnCenter.x + Math.cos(angle) * dist;
         const sz = this.spawnCenter.z + Math.sin(angle) * dist;
-
-        const groundBlock = this.world.getBlock(
-          Math.floor(sx), Math.floor(this._getGroundY(sx, sz) - 1), Math.floor(sz)
-        );
-        // BuilderBot 可以在任何固体地面生成
-        const validGround = type === 'builder' ? isSolid(groundBlock) : 
+        const groundBlock = this.world.getBlock(Math.floor(sx), Math.floor(this._getGroundY(sx, sz) - 1), Math.floor(sz));
+        const validGround = type === 'builder' ? isSolid(groundBlock) :
           (groundBlock === BlockType.GRASS || groundBlock === BlockType.SAND || groundBlock === BlockType.SNOW_GRASS);
         if (!validGround) continue;
-
         const gy = this._getGroundY(sx, sz);
         if (gy < 1 || gy > 40) continue;
-
         let tooClose = false;
         for (const p of usedPositions) {
-          const d = Math.sqrt((sx - p.x) ** 2 + (sz - p.z) ** 2);
-          if (d < MIN_SPAWN_DIST) { tooClose = true; break; }
+          if (Math.sqrt((sx - p.x) ** 2 + (sz - p.z) ** 2) < MIN_SPAWN_DIST) { tooClose = true; break; }
         }
         if (tooClose) continue;
-
         usedPositions.push({ x: sx, z: sz });
         let robot;
-        if (type === 'scout') {
-          robot = new ScoutBot(this.scene, this.world, sx, gy, sz);
-        } else if (type === 'heavy') {
-          robot = new HeavyBot(this.scene, this.world, sx, gy, sz);
-        } else if (type === 'builder') {
-          robot = new BuilderBot(this.scene, this.world, sx, gy, sz);
-        }
+        if (type === 'scout') robot = new ScoutBot(this.scene, this.world, sx, gy, sz);
+        else if (type === 'heavy') robot = new HeavyBot(this.scene, this.world, sx, gy, sz);
+        else if (type === 'builder') robot = new BuilderBot(this.scene, this.world, sx, gy, sz);
         this.robots.push(robot);
         return;
       }
     };
 
-    // 生成所有类型机器人
     for (let i = 0; i < heavyCount; i++) trySpawn('heavy');
     for (let i = 0; i < scoutCount; i++) trySpawn('scout');
     for (let i = 0; i < builderCount; i++) trySpawn('builder');
   }
 
-  // 获取机器人统计信息
+  _getGroundY(px, pz) {
+    for (let y = 40; y >= 0; y--) {
+      if (isSolid(this.world.getBlock(Math.floor(px), y, Math.floor(pz)))) return y + 1;
+    }
+    return 0;
+  }
+
   getStats() {
     const stats = { scout: 0, heavy: 0, builder: 0 };
     for (const robot of this.robots) {
@@ -773,25 +819,28 @@ export class AnimalManager {
     return stats;
   }
 
-  // 让 BuilderBot 跟随玩家
   setBuilderFollow(playerPos) {
     for (const robot of this.robots) {
-      if (robot instanceof BuilderBot) {
-        robot.setFollowPlayer(playerPos);
-      }
+      if (robot instanceof BuilderBot) robot.setFollowPlayer(playerPos);
     }
   }
 
-  // 停止所有 BuilderBot 跟随
   stopBuilderFollow() {
     for (const robot of this.robots) {
-      if (robot instanceof BuilderBot) {
-        robot.stopFollow();
-      }
+      if (robot instanceof BuilderBot) robot.stopFollow();
     }
   }
 
-  // 在玩家附近生成 BuilderBot
+  /** 命令 BuilderBot 在玩家附近随机建造 */
+  commandBuildNearPlayer(playerPos) {
+    for (const robot of this.robots) {
+      if (robot instanceof BuilderBot && !robot.buildMode) {
+        return robot.startRandomBuildNearPlayer(playerPos);
+      }
+    }
+    return false;
+  }
+
   spawnBuilderNearPlayer(playerPos) {
     for (let attempt = 0; attempt < 30; attempt++) {
       const angle = Math.random() * Math.PI * 2;
@@ -799,24 +848,14 @@ export class AnimalManager {
       const sx = playerPos.x + Math.cos(angle) * dist;
       const sz = playerPos.z + Math.sin(angle) * dist;
       const gy = this._getGroundY(sx, sz);
-
       if (gy < 1 || gy > 40) continue;
-
-      const groundBlock = this.world.getBlock(
-        Math.floor(sx), Math.floor(gy - 1), Math.floor(sz)
-      );
+      const groundBlock = this.world.getBlock(Math.floor(sx), Math.floor(gy - 1), Math.floor(sz));
       if (!isSolid(groundBlock)) continue;
-
-      // 检查是否与其他机器人太近
       let tooClose = false;
       for (const robot of this.robots) {
-        const d = Math.sqrt(
-          (sx - robot.position.x) ** 2 + (sz - robot.position.z) ** 2
-        );
-        if (d < 3) { tooClose = true; break; }
+        if (Math.sqrt((sx - robot.position.x) ** 2 + (sz - robot.position.z) ** 2) < 3) { tooClose = true; break; }
       }
       if (tooClose) continue;
-
       const builder = new BuilderBot(this.scene, this.world, sx, gy, sz);
       this.robots.push(builder);
       return builder;
@@ -824,26 +863,14 @@ export class AnimalManager {
     return null;
   }
 
-  _getGroundY(wx, wz) {
-    for (let wy = 48 - 1; wy >= 0; wy--) {
-      const block = this.world.getBlock(Math.floor(wx), wy, Math.floor(wz));
-      if (isSolid(block) && block !== BlockType.LEAVES) {
-        return wy + 1;
-      }
-    }
-    return 1;
-  }
-
-  update(dt) {
+  updateAll(dt, playerPos) {
     for (const robot of this.robots) {
       robot.update(dt, this.spawnCenter);
     }
   }
 
-  dispose() {
-    for (const robot of this.robots) {
-      robot.dispose();
-    }
+  disposeAll() {
+    for (const robot of this.robots) robot.dispose();
     this.robots = [];
   }
 }
