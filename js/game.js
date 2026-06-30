@@ -8,17 +8,18 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1782819946';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782819946';
-import { GameAudio } from './audio.js?v=1782819946';
+} from './voxel.js?v=1782820239';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782820239';
+import { GameAudio } from './audio.js?v=1782820239';
 
 /* ============================================
    玩家类 - 第一人称角色控制
    ============================================ */
 class Player {
-  constructor(camera, world) {
+  constructor(camera, world, audio) {
     this.camera = camera;
     this.world = world;
+    this.audio = audio;
 
     // 位置与速度（出生点在文字墙正对面，面朝立墙）
     // 文字墙位于 z=0，玩家应在 z>0 位置，yaw=0 时看向负Z方向（南）
@@ -36,6 +37,9 @@ class Player {
     this.jumpSpeed = 12;
     this.moveSpeed = 5.5;
     this.onGround = false;
+    this._wasOnGround = false;
+    this._wasInWater = false;
+    this._footstepAccum = 0; // 脚步声累积距离
 
     // 玩家碰撞体尺寸
     this.width = 0.6;
@@ -125,6 +129,7 @@ class Player {
     if (!inWater && (this.keys['Space'] || this.keys['KeyK']) && this.onGround) {
       this.velocity.y = this.jumpSpeed;
       this.onGround = false;
+      if (this.audio) this.audio.playJump();
     }
 
     // 水中移动减速
@@ -175,6 +180,42 @@ class Player {
 
     // 射线检测（目标方块）
     this._raycast();
+
+    // === 音效触发 ===
+    if (this.audio) {
+      // 落地音效
+      if (this.onGround && !this._wasOnGround && this.velocity.y < -2) {
+        const belowBlock = this.world.getBlock(
+          Math.floor(this.position.x),
+          Math.floor(this.position.y - 0.1),
+          Math.floor(this.position.z)
+        );
+        this.audio.playLand(belowBlock);
+      }
+      // 入水音效
+      if (inWater && !this._wasInWater) {
+        this.audio.playSplash();
+      }
+      // 脚步声
+      if (this.onGround) {
+        const isMoving = Math.abs(this.velocity.x) > 0.1 || Math.abs(this.velocity.z) > 0.1;
+        if (isMoving) {
+          this._footstepAccum += Math.sqrt(this.velocity.x ** 2 + this.velocity.z ** 2) * dt;
+          if (this._footstepAccum > 2.2) {
+            this._footstepAccum = 0;
+            const groundBlock = this.world.getBlock(
+              Math.floor(this.position.x),
+              Math.floor(this.position.y - 0.1),
+              Math.floor(this.position.z)
+            );
+            this.audio.playFootstep(groundBlock);
+          }
+        }
+      }
+    }
+
+    this._wasOnGround = this.onGround;
+    this._wasInWater = inWater;
   }
 
   /**
@@ -352,6 +393,7 @@ class Player {
     if (this.world.getBlock(px, py, pz) !== BlockType.AIR) return false;
 
     this.world.setBlock(px, py, pz, this.selectedBlock);
+    if (this.audio) this.audio.playBlockPlace(this.selectedBlock);
     return true;
   }
 
@@ -362,7 +404,9 @@ class Player {
     const { x, y, z } = this.targetBlock;
     if (y < 0 || y >= CHUNK_HEIGHT) return false;
 
+    const prevBlock = this.world.getBlock(x, y, z);
     this.world.setBlock(x, y, z, BlockType.AIR);
+    if (this.audio) this.audio.playBlockBreak(prevBlock);
     return true;
   }
 }
@@ -814,7 +858,7 @@ class Game {
 
   /** 初始化玩家 */
   _initPlayer() {
-    this.player = new Player(this.camera, this.world);
+    this.player = new Player(this.camera, this.world, this.audio);
   }
 
   /** 初始化云彩系统（来自 pycraft 美化） */
@@ -1171,13 +1215,23 @@ class Game {
     });
   }
 
-  /** 切换音乐开关 */
+  /** 切换音乐/音效开关（循环：全部开 → 仅音效 → 全部关 → 全部开） */
   _toggleMusic() {
     if (!this._musicStarted) {
       this._startMusic();
       return;
     }
-    const muted = this.audio.toggleMute();
+    if (!this.audio.isMusicMuted && !this.audio.isSfxMuted) {
+      // 全部开 → 关音乐
+      this.audio.toggleMusic();
+    } else if (this.audio.isMusicMuted && !this.audio.isSfxMuted) {
+      // 关音乐 → 全部关
+      this.audio.toggleSfx();
+    } else {
+      // 全部关 → 全部开
+      this.audio.toggleMusic(); // 开音乐
+      this.audio.toggleSfx();  // 开音效
+    }
     this._updateMusicButton();
   }
 
@@ -1187,13 +1241,16 @@ class Game {
     if (!btn) return;
     if (!this._musicStarted) {
       btn.textContent = '🔇';
-      btn.title = '点击开启音乐';
-    } else if (this.audio.isMuted) {
-      btn.textContent = '🔇';
-      btn.title = '点击开启音乐';
+      btn.title = '点击开启声音';
+    } else if (!this.audio.isMusicMuted && !this.audio.isSfxMuted) {
+      btn.textContent = '🔊';
+      btn.title = '音乐+音效（点击切换）';
+    } else if (this.audio.isMusicMuted && !this.audio.isSfxMuted) {
+      btn.textContent = '🔉';
+      btn.title = '仅音效（点击切换）';
     } else {
-      btn.textContent = '🎵';
-      btn.title = '点击关闭音乐';
+      btn.textContent = '🔇';
+      btn.title = '已静音（点击恢复）';
     }
   }
 
