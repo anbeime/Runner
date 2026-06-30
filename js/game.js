@@ -8,9 +8,9 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1782821229';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782821229';
-import { GameAudio } from './audio.js?v=1782821229';
+} from './voxel.js?v=1782822898';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782822898';
+import { GameAudio } from './audio.js?v=1782822898';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -1133,6 +1133,16 @@ class Game {
         this.isRunning = true;
         this.ui.startScreen.style.display = 'none';
         this._startMusic();
+        // 生成一个 BuilderBot 在玩家附近，几秒后自动建造
+        if (this.animalManager.animals) {
+          const bx = this.player.position.x + 8;
+          const bz = this.player.position.z - 10;
+          const by = this.world.getHeightAt(bx, bz) || 20;
+          const builder = new BuilderBot(this.scene, this.world, bx, by, bz);
+          builder.setFollowPlayer(this.player);
+          this.animalManager.robots.push(builder);
+          this._showMessage('BuilderBot 已就绪，即将自动建造！');
+        }
         // 相机从立墙预览切到玩家第一人称
         this.camera.position.set(this._spawnX, this._spawnY + this.player.eyeHeight, this._spawnZ);
         const lookDir = new THREE.Vector3(
@@ -1158,6 +1168,15 @@ class Game {
         this.isRunning = true;
         this.ui.startScreen.style.display = 'none';
         this._startMusic();
+        // 生成 BuilderBot
+        if (this.animalManager.animals) {
+          const bx = this.player.position.x + 8;
+          const bz = this.player.position.z - 10;
+          const by = this.world.getHeightAt(bx, bz) || 20;
+          const builder = new BuilderBot(this.scene, this.world, bx, by, bz);
+          builder.setFollowPlayer(this.player);
+          this.animalManager.robots.push(builder);
+        }
         // 相机从立墙预览切到玩家第一人称
         this.camera.position.set(this._spawnX, this._spawnY + this.player.eyeHeight, this._spawnZ);
         const lookDir = new THREE.Vector3(
