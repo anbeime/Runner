@@ -194,6 +194,14 @@
   </div>
 
   <!-- 游戏主模块 (添加版本号防止缓存) -->
-  <script type="module" src="/js/game.js?v=1782823800"></script>
+  <script type="module" src="/js/game.js?v=1782823900"></script>
+  <!-- 诊断：确认 game.js 是否执行 -->
+  <script>
+    window.__gameLoadCheck = setTimeout(function() {
+      if (!window.__gameReady) {
+        showError('[诊断] game.js 在 3 秒内未完成初始化，可能模块加载失败或执行抛错');
+      }
+    }, 3000);
+  </script>
 </body>
 </html>

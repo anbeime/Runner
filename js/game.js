@@ -715,13 +715,22 @@ class Game {
 
   /** 初始化游戏 */
   async init() {
+    // 先绑定事件（按钮等），确保即使后续 3D 初始化失败也能点击
+    this._initEvents();
+
     this._initRenderer();
+
+    // WebGL 不可用时：跳过 3D 初始化，按钮已绑定，点击会给出提示
+    if (this.webglAvailable !== true) {
+      console.log('[init] WebGL 不可用，跳过 3D 初始化，按钮已绑定');
+      return;
+    }
+
     this._initScene();
     this._initPlayer();
     this._initHighlight();
     this._initHotbar();
     if (this.isMobile) this._initMobileHotbar();
-    this._initEvents();
 
     // 设置预览视角：近距离平视"BILIBILI"立墙
     this.camera.position.set(0, 23, 12);
@@ -803,16 +812,36 @@ class Game {
 
   /** 初始化渲染器 */
   _initRenderer() {
-    this.renderer = new THREE.WebGLRenderer({
-      canvas: this.canvas,
-      antialias: false,
-      powerPreference: this.isMobile ? 'low-power' : 'default',
-    });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    // 移动端降低像素比以提升性能
-    const maxPixelRatio = this.isMobile ? 1.2 : 2;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
-    this.renderer.setClearColor(0x87CEEB);
+    try {
+      this.renderer = new THREE.WebGLRenderer({
+        canvas: this.canvas,
+        antialias: false,
+        powerPreference: this.isMobile ? 'low-power' : 'default',
+      });
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      // 移动端降低像素比以提升性能
+      const maxPixelRatio = this.isMobile ? 1.2 : 2;
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
+      this.renderer.setClearColor(0x87CEEB);
+      this.webglAvailable = true;
+    } catch (err) {
+      console.error('[Renderer] WebGL 初始化失败:', err);
+      this.renderer = null;
+      this.webglAvailable = false;
+      // 显示 WebGL 不可用提示（不阻断后续事件绑定）
+      this._showWebGLError();
+    }
+  }
+
+  /** 显示 WebGL 不可用提示 */
+  _showWebGLError() {
+    const div = document.createElement('div');
+    div.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:200;background:rgba(20,0,0,0.95);color:#fff;padding:24px 32px;border-radius:12px;border:1px solid #c0392b;max-width:480px;text-align:center;font:14px/1.6 sans-serif;box-shadow:0 0 40px rgba(192,57,43,0.5);';
+    div.innerHTML = '<div style="font-size:40px;margin-bottom:12px;">⚠️</div>' +
+      '<div style="font-size:18px;font-weight:bold;color:#ff6b6b;margin-bottom:10px;">WebGL 不可用</div>' +
+      '<div style="color:#ccc;margin-bottom:14px;">你的浏览器或环境禁用了 WebGL，无法渲染 3D 场景。</div>' +
+      '<div style="color:#999;font-size:12px;">请尝试：<br>1. 在 Chrome/Edge 浏览器中打开<br>2. 开启浏览器硬件加速（设置→系统）<br>3. 更新显卡驱动</div>';
+    document.body.appendChild(div);
   }
 
   /** 初始化场景与灯光 */
@@ -1203,6 +1232,11 @@ class Game {
    */
   _enterGame(mode) {
     if (this.isRunning) return;
+    // WebGL 不可用：点击按钮给提示，不进入游戏
+    if (!this.webglAvailable) {
+      this._showMessage('⚠️ WebGL 不可用，无法启动 3D 游戏。请在 Chrome/Edge 中开启硬件加速后重试。');
+      return;
+    }
     this.isRunning = true;
     this.ui.startScreen.style.display = 'none';
     this._startMusic();
@@ -1510,7 +1544,17 @@ class Game {
    启动游戏
    ============================================ */
 window.addEventListener('DOMContentLoaded', async () => {
-  const game = new Game();
-  await game.init();
-  game.animate();
+  try {
+    const game = new Game();
+    window.__game = game; // 暴露到全局便于调试
+    await game.init();
+    window.__gameReady = true; // 诊断标记：初始化完成
+    game.animate();
+  } catch (err) {
+    console.error('[Game] 启动失败:', err);
+    const detail = (err && (err.stack || err.message)) || (typeof err === 'object' ? JSON.stringify(err) : String(err));
+    if (window.showError) {
+      window.showError('[Game 启动失败] type=' + (err && err.constructor && err.constructor.name) + ' detail=' + detail);
+    }
+  }
 });
