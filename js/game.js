@@ -8,9 +8,10 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1782822898';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782822898';
-import { GameAudio } from './audio.js?v=1782822898';
+} from './voxel.js?v=1782823400';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782823400';
+import { GameAudio } from './audio.js?v=1782823400';
+import { ParkourManager } from './parkour.js?v=1782823400';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -672,6 +673,7 @@ class Game {
     this.highlight = null;
     this.touchController = null;
     this.animalManager = null;
+    this.parkourManager = null;
 
     // 帧率统计
     this.clock = new THREE.Clock();
@@ -845,6 +847,12 @@ class Game {
 
     // 初始化机器人生成管理器
     this.animalManager = new AnimalManager(this.scene, this.world, this.isMobile);
+
+    // 初始化跑酷模式管理器（融合跑酷 + 建造）
+    this.parkourManager = new ParkourManager(
+      this.scene, this.world, this.animalManager, this.audio,
+      (msg) => this._showMessage(msg)
+    );
 
     // 相机：移动端更广视角（90°），桌面端默认（75°）
     this.defaultFov = this.isMobile ? 90 : 75;
@@ -1067,6 +1075,19 @@ class Game {
           this.animalManager.spawnBuilderNearPlayer(this.player.position);
         }
       }
+
+      // P键 - 切换跑酷模式（融合跑酷 + 建造）
+      if (e.code === 'KeyP' && this.isRunning) {
+        if (this.parkourManager) {
+          if (this.parkourManager.active) {
+            this.parkourManager.stop(this.player);
+            this._updateParkourHUD(false);
+          } else {
+            this.parkourManager.start(this.player);
+            this._updateParkourHUD(true);
+          }
+        }
+      }
     });
 
     document.addEventListener('keyup', (e) => {
@@ -1079,9 +1100,10 @@ class Game {
       this.player.onMouseMove(e.movementX, e.movementY);
     });
 
-    // 鼠标点击（仅桌面端指针锁定后）
+    // 鼠标点击（仅桌面端指针锁定后，且不在跑酷模式）
     document.addEventListener('mousedown', (e) => {
       if (!this.isPointerLocked) return;
+      if (this.parkourManager && this.parkourManager.active) return; // 跑酷模式禁用方块操作
       if (e.button === 0) {
         this.player.placeBlock();
       } else if (e.button === 2) {
@@ -1232,6 +1254,24 @@ class Game {
       const mobileControls = document.getElementById('mobileControls');
       if (mobileControls) mobileControls.style.display = show ? 'block' : 'none';
     }
+  }
+
+  /** 更新跑酷模式 HUD */
+  _updateParkourHUD(show) {
+    let hud = document.getElementById('parkourHUD');
+    if (!show) {
+      if (hud) hud.style.display = 'none';
+      return;
+    }
+    if (!hud) return; // DOM 元素由 index.html 提供
+    const data = this.parkourManager.getHUDData();
+    const hearts = '❤'.repeat(data.lives) + '🖤'.repeat(data.maxLives - data.lives);
+    document.getElementById('parkourScore').textContent = data.score.toLocaleString();
+    document.getElementById('parkourDistance').textContent = data.distance;
+    document.getElementById('parkourLives').textContent = hearts;
+    document.getElementById('parkourSegment').textContent = `${data.segment} · ${data.segmentName}`;
+    document.getElementById('parkourSpeed').textContent = data.speed + '%';
+    hud.style.display = 'block';
   }
 
   /** 启动背景音乐 */
@@ -1408,11 +1448,17 @@ class Game {
 
     // 桌面端指针锁定 或 移动端运行时更新游戏逻辑
     if (this.isPointerLocked || (this.isMobile && this.isRunning)) {
-      this.player.update(dt);
-      this.world.update(this.player.position.x, this.player.position.z);
-      this.highlight.update(this.player.targetBlock);
+      if (this.parkourManager && this.parkourManager.active) {
+        // 跑酷模式：由 ParkourManager 接管玩家控制
+        this.parkourManager.update(dt, this.player);
+        this.world.update(this.player.position.x, this.player.position.z);
+      } else {
+        this.player.update(dt);
+        this.world.update(this.player.position.x, this.player.position.z);
+        this.highlight.update(this.player.targetBlock);
+      }
     }
-    
+
     // 云彩缓慢移动（始终运行）
     if (this.clouds) {
       this.clouds.children.forEach((cloud, idx) => {
@@ -1430,6 +1476,11 @@ class Game {
     // 更新机器人 AI（始终运行，即使暂停状态也让机器人有生命感）
     if (this.animalManager) {
       this.animalManager.update(dt);
+    }
+
+    // 更新跑酷 HUD
+    if (this.parkourManager && this.parkourManager.active) {
+      this._updateParkourHUD(true);
     }
 
     // 渲染

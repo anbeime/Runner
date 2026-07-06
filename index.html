@@ -48,8 +48,38 @@
       <div class="control-row"><span class="key">空格</span><span>跳跃</span></div>
       <div class="control-row"><span class="key">1-6</span><span>选择方块</span></div>
       <div class="control-row"><span class="key">滚轮</span><span>切换方块</span></div>
+      <div class="control-row"><span class="key">B</span><span>建造机器人模式切换</span></div>
+      <div class="control-row"><span class="key">N</span><span>生成新建造机器人</span></div>
+      <div class="control-row"><span class="key">P</span><span>跑酷模式切换</span></div>
       <div class="control-row"><span class="key">ESC</span><span>暂停</span></div>
     </div>
+  </div>
+
+  <!-- 跑酷模式 HUD -->
+  <div id="parkourHUD" style="display:none;">
+    <div class="parkour-top">
+      <div class="parkour-stat">
+        <span class="parkour-label">分数</span>
+        <span id="parkourScore" class="parkour-value">0</span>
+      </div>
+      <div class="parkour-stat">
+        <span class="parkour-label">距离</span>
+        <span id="parkourDistance" class="parkour-value">0</span>
+      </div>
+      <div class="parkour-stat">
+        <span class="parkour-label">生命</span>
+        <span id="parkourLives" class="parkour-value">❤❤❤</span>
+      </div>
+      <div class="parkour-stat">
+        <span class="parkour-label">段</span>
+        <span id="parkourSegment" class="parkour-value">0</span>
+      </div>
+      <div class="parkour-stat">
+        <span class="parkour-label">速度</span>
+        <span id="parkourSpeed" class="parkour-value">100%</span>
+      </div>
+    </div>
+    <div class="parkour-hint">A/D 左右 · 空格跳跃 · P 退出</div>
   </div>
 
   <!-- 加载进度 -->
@@ -84,6 +114,7 @@
       <div class="control-row"><span class="key">0</span><span>重置视野</span></div>
       <div class="control-row"><span class="key">B</span><span>建造机器人模式切换</span></div>
       <div class="control-row"><span class="key">N</span><span>生成新建造机器人</span></div>
+      <div class="control-row"><span class="key">P</span><span>跑酷模式切换（建造+跑酷融合）</span></div>
     </div>
   </div>
 
@@ -104,6 +135,6 @@
   </div>
 
   <!-- 游戏主模块 (添加版本号防止缓存) -->
-  <script type="module" src="/js/game.js?v=1782822898"></script>
+  <script type="module" src="/js/game.js?v=1782823400"></script>
 </body>
 </html>

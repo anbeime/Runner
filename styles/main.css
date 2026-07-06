@@ -614,3 +614,92 @@ html, body {
     font-size: 11px;
   }
 }
+
+/* ============================================
+   跑酷模式 HUD
+   ============================================ */
+#parkourHUD {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid #FFD700;
+  border-radius: 10px;
+  padding: 10px 16px;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.35);
+  font-family: 'Courier New', monospace;
+  color: #fff;
+}
+
+.parkour-top {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.parkour-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+}
+
+.parkour-label {
+  font-size: 10px;
+  color: #FFD700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.parkour-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 0 0 6px rgba(255, 215, 0, 0.6);
+  margin-top: 2px;
+}
+
+#parkourLives {
+  color: #FF5577;
+  text-shadow: 0 0 6px rgba(255, 85, 119, 0.7);
+  font-size: 16px;
+}
+
+.parkour-hint {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+@media (max-width: 768px) {
+  #parkourHUD {
+    top: 8px;
+    padding: 8px 10px;
+    gap: 4px;
+  }
+  .parkour-top {
+    gap: 10px;
+  }
+  .parkour-stat {
+    min-width: 44px;
+  }
+  .parkour-value {
+    font-size: 14px;
+  }
+  .parkour-label {
+    font-size: 9px;
+  }
+  .parkour-hint {
+    font-size: 10px;
+  }
+}
