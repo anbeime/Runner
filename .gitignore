@@ -8,7 +8,9 @@ __pycache__/
 .venv/*
 *.o
 *.a
-/vendor
+/vendor/*
+# 保留 Three.js 本地副本（避免 CDN 被墙导致白屏）
+!/vendor/three.module.js
 *.egg-info/
 /.env
 .env

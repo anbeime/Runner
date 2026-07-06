@@ -31,11 +31,11 @@
       d.textContent += text + '\n';
     }
   </script>
-  <!-- 使用 importmap 引入 Three.js ES Module -->
+  <!-- 使用 importmap 引入 Three.js ES Module（本地优先，避免 CDN 被墙导致白屏） -->
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      "three": "/vendor/three.module.js"
     }
   }
   </script>
