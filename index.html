@@ -96,25 +96,59 @@
 
   <!-- 开始界面 -->
   <div id="startScreen">
-    <div class="start-title">BILIBILI 像素方块世界</div>
-    <div class="start-subtitle">VOXEL BLOCK WORLD</div>
-    <div class="start-hint">点击开始游戏</div>
-    <div class="controls-info desktop-only">
-      <h3>操作说明</h3>
-      <div class="control-row"><span class="key">W A S D</span><span>移动</span></div>
-      <div class="control-row"><span class="key">鼠标</span><span>视角旋转</span></div>
-      <div class="control-row"><span class="key">空格</span><span>跳跃</span></div>
-      <div class="control-row"><span class="key">左键</span><span>放置方块</span></div>
-      <div class="control-row"><span class="key">右键</span><span>破坏方块</span></div>
-      <div class="control-row"><span class="key">1-9</span><span>选择方块</span></div>
-      <div class="control-row"><span class="key">滚轮</span><span>切换方块</span></div>
-      <div class="control-row"><span class="key">ESC</span><span>暂停</span></div>
-      <div class="control-row"><span class="key">= / Ctrl+滚轮上</span><span>放大画面</span></div>
-      <div class="control-row"><span class="key">- / Ctrl+滚轮下</span><span>缩小画面</span></div>
-      <div class="control-row"><span class="key">0</span><span>重置视野</span></div>
-      <div class="control-row"><span class="key">B</span><span>建造机器人模式切换</span></div>
-      <div class="control-row"><span class="key">N</span><span>生成新建造机器人</span></div>
-      <div class="control-row"><span class="key">P</span><span>跑酷模式切换（建造+跑酷融合）</span></div>
+    <div class="start-card">
+      <div class="start-badge">VOXEL · BUILD · PARKOUR</div>
+      <h1 class="start-title">BILIBILI 像素方块世界</h1>
+      <p class="start-subtitle">在像素方块世界中自由建造，或挑战 BuilderBot 实时建造的跑酷路径</p>
+
+      <div class="start-modes">
+        <button class="mode-card mode-sandbox" data-mode="sandbox">
+          <div class="mode-icon">🟩</div>
+          <div class="mode-body">
+            <div class="mode-name">沙盒建造模式</div>
+            <div class="mode-desc">自由探索 · 放置/破坏方块 · 召唤 BuilderBot 自动建造</div>
+          </div>
+          <div class="mode-arrow">›</div>
+        </button>
+
+        <button class="mode-card mode-parkour" data-mode="parkour">
+          <div class="mode-icon">🏃</div>
+          <div class="mode-body">
+            <div class="mode-name">
+              试玩跑酷模式
+              <span class="mode-tag">NEW</span>
+            </div>
+            <div class="mode-desc">BuilderBot 前方实时建造 · 5 种段位 · 跳跃穿越</div>
+          </div>
+          <div class="mode-arrow">›</div>
+        </button>
+      </div>
+
+      <div class="start-controls desktop-only">
+        <div class="ctrl-group">
+          <span class="ctrl-title">通用</span>
+          <span class="ctrl-item"><kbd>空格</kbd> 跳跃</span>
+          <span class="ctrl-item"><kbd>ESC</kbd> 暂停</span>
+        </div>
+        <div class="ctrl-group">
+          <span class="ctrl-title">沙盒</span>
+          <span class="ctrl-item"><kbd>WASD</kbd> 移动</span>
+          <span class="ctrl-item"><kbd>鼠标</kbd> 视角</span>
+          <span class="ctrl-item"><kbd>左键</kbd> 放置</span>
+          <span class="ctrl-item"><kbd>右键</kbd> 破坏</span>
+          <span class="ctrl-item"><kbd>B</kbd> 召唤建造机器人</span>
+        </div>
+        <div class="ctrl-group">
+          <span class="ctrl-title">跑酷</span>
+          <span class="ctrl-item"><kbd>A</kbd>/<kbd>D</kbd> 左右</span>
+          <span class="ctrl-item"><kbd>空格</kbd> 跳跃</span>
+          <span class="ctrl-item"><kbd>P</kbd> 退出跑酷</span>
+        </div>
+      </div>
+
+      <div class="start-controls-mobile mobile-only">
+        点击「试玩跑酷模式」一键开始
+      </div>
     </div>
   </div>
 

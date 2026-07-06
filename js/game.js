@@ -1151,34 +1151,11 @@ class Game {
         }
       };
 
-      this.ui.startScreen.addEventListener('click', () => {
-        this.isRunning = true;
-        this.ui.startScreen.style.display = 'none';
-        this._startMusic();
-        // 生成一个 BuilderBot 在玩家附近，几秒后自动建造
-        if (this.animalManager.animals) {
-          const bx = this.player.position.x + 8;
-          const bz = this.player.position.z - 10;
-          const by = this.world.getHeightAt(bx, bz) || 20;
-          const builder = new BuilderBot(this.scene, this.world, bx, by, bz);
-          builder.setFollowPlayer(this.player);
-          this.animalManager.robots.push(builder);
-          this._showMessage('BuilderBot 已就绪，即将自动建造！');
-        }
-        // 相机从立墙预览切到玩家第一人称
-        this.camera.position.set(this._spawnX, this._spawnY + this.player.eyeHeight, this._spawnZ);
-        const lookDir = new THREE.Vector3(
-          -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
-          Math.sin(this.player.pitch),
-          -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
-        );
-        this.camera.lookAt(
-          this.camera.position.x + lookDir.x,
-          this.camera.position.y + lookDir.y,
-          this.camera.position.z + lookDir.z
-        );
-        requestLock();
-      });
+      // 开始界面：双入口按钮（沙盒 / 试玩跑酷）
+      const sandboxBtn = this.ui.startScreen.querySelector('[data-mode="sandbox"]');
+      const parkourBtn = this.ui.startScreen.querySelector('[data-mode="parkour"]');
+      if (sandboxBtn) sandboxBtn.addEventListener('click', () => this._enterGame('sandbox'));
+      if (parkourBtn) parkourBtn.addEventListener('click', () => this._enterGame('parkour'));
 
       this.ui.pauseScreen.addEventListener('click', requestLock);
       this.canvas.addEventListener('click', requestLock);
@@ -1186,33 +1163,11 @@ class Game {
 
     // ----- 移动端：直接进入游戏 + 触摸控制 -----
     if (this.isMobile) {
-      this.ui.startScreen.addEventListener('click', () => {
-        this.isRunning = true;
-        this.ui.startScreen.style.display = 'none';
-        this._startMusic();
-        // 生成 BuilderBot
-        if (this.animalManager.animals) {
-          const bx = this.player.position.x + 8;
-          const bz = this.player.position.z - 10;
-          const by = this.world.getHeightAt(bx, bz) || 20;
-          const builder = new BuilderBot(this.scene, this.world, bx, by, bz);
-          builder.setFollowPlayer(this.player);
-          this.animalManager.robots.push(builder);
-        }
-        // 相机从立墙预览切到玩家第一人称
-        this.camera.position.set(this._spawnX, this._spawnY + this.player.eyeHeight, this._spawnZ);
-        const lookDir = new THREE.Vector3(
-          -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
-          Math.sin(this.player.pitch),
-          -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
-        );
-        this.camera.lookAt(
-          this.camera.position.x + lookDir.x,
-          this.camera.position.y + lookDir.y,
-          this.camera.position.z + lookDir.z
-        );
-        this._showGameUI(true);
-      });
+      // 开始界面：双入口按钮（移动端同样支持）
+      const sandboxBtn = this.ui.startScreen.querySelector('[data-mode="sandbox"]');
+      const parkourBtn = this.ui.startScreen.querySelector('[data-mode="parkour"]');
+      if (sandboxBtn) sandboxBtn.addEventListener('click', () => this._enterGame('sandbox'));
+      if (parkourBtn) parkourBtn.addEventListener('click', () => this._enterGame('parkour'));
 
       this.ui.pauseScreen.addEventListener('click', () => {
         this.isRunning = true;
@@ -1237,7 +1192,60 @@ class Game {
     }
   }
 
-  /** 显示/隐藏游戏HUD */
+  /**
+   * 统一进入游戏入口
+   * @param {'sandbox'|'parkour'} mode - sandbox 沙盒建造；parkour 试玩跑酷模式
+   */
+  _enterGame(mode) {
+    if (this.isRunning) return;
+    this.isRunning = true;
+    this.ui.startScreen.style.display = 'none';
+    this._startMusic();
+
+    // 生成一个 BuilderBot 在玩家附近（跑酷模式会用作路径建造者，沙盒模式自动建造建筑）
+    if (this.animalManager && this.animalManager.robots) {
+      const bx = this.player.position.x + 8;
+      const bz = this.player.position.z - 10;
+      const by = this.world.getHeightAt(bx, bz) || 20;
+      const builder = new BuilderBot(this.scene, this.world, bx, by, bz);
+      builder.setFollowPlayer(this.player);
+      this.animalManager.robots.push(builder);
+      if (mode === 'sandbox') {
+        this._showMessage('BuilderBot 已就绪，即将自动建造！');
+      }
+    }
+
+    // 相机从立墙预览切到玩家第一人称
+    this.camera.position.set(this._spawnX, this._spawnY + this.player.eyeHeight, this._spawnZ);
+    const lookDir = new THREE.Vector3(
+      -Math.sin(this.player.yaw) * Math.cos(this.player.pitch),
+      Math.sin(this.player.pitch),
+      -Math.cos(this.player.yaw) * Math.cos(this.player.pitch)
+    );
+    this.camera.lookAt(
+      this.camera.position.x + lookDir.x,
+      this.camera.position.y + lookDir.y,
+      this.camera.position.z + lookDir.z
+    );
+
+    // 桌面端请求指针锁定；移动端显示触控 UI
+    if (!this.isMobile) {
+      this.canvas.requestPointerLock();
+    } else {
+      this._showGameUI(true);
+    }
+
+    // 试玩跑酷模式：延迟一帧后启动跑酷（确保游戏循环已运行）
+    if (mode === 'parkour' && this.parkourManager) {
+      setTimeout(() => {
+        if (this.parkourManager && !this.parkourManager.active) {
+          this.parkourManager.start(this.player);
+          this._updateParkourHUD(true);
+        }
+      }, 200);
+    }
+  }
+
   _showGameUI(show) {
     const display = show ? 'flex' : 'none';
     this.ui.crosshair.style.display = show ? 'block' : 'none';
