@@ -1470,6 +1470,9 @@ class Game {
   animate() {
     requestAnimationFrame(() => this.animate());
 
+    // WebGL 不可用时跳过渲染（防止 renderer 为 null 导致崩溃）
+    if (!this.renderer || !this.scene || !this.camera) return;
+
     const dt = this.clock.getDelta();
 
     // FPS 计算
@@ -1530,7 +1533,7 @@ class Game {
       this._updateParkourHUD(true);
     }
 
-    // 渲染
+    // 渲染（renderer 已在循环开头校验，这里安全）
     this.renderer.render(this.scene, this.camera);
 
     // 更新UI（降低更新频率）
@@ -1549,7 +1552,10 @@ window.addEventListener('DOMContentLoaded', async () => {
     window.__game = game; // 暴露到全局便于调试
     await game.init();
     window.__gameReady = true; // 诊断标记：初始化完成
-    game.animate();
+    // WebGL 不可用时不再启动渲染循环（_showWebGLError 已提示用户）
+    if (game.webglAvailable) {
+      game.animate();
+    }
   } catch (err) {
     console.error('[Game] 启动失败:', err);
     const detail = (err && (err.stack || err.message)) || (typeof err === 'object' ? JSON.stringify(err) : String(err));
