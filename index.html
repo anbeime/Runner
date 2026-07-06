@@ -6,6 +6,31 @@
   <meta name="description" content="BILIBILI像素方块世界 - 3D像素风格方块世界探索游戏" />
   <title>BILIBILI 像素方块世界</title>
   <link rel="stylesheet" href="/styles/main.css" />
+  <!-- 全局错误捕获：模块加载/运行时错误显式化，避免"点击无反应"无法排查 -->
+  <script>
+    window.addEventListener('error', function(e) {
+      var msg = e.message || (e.error && e.error.message) || String(e);
+      var file = e.filename ? e.filename.split('/').pop() : '';
+      var line = e.lineno || '';
+      showError('[JS错误] ' + msg + (file ? ' (' + file + ':' + line + ')' : ''));
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var r = e.reason;
+      var msg = (r && r.message) ? r.message : String(r);
+      showError('[Promise错误] ' + msg);
+    });
+    function showError(text) {
+      var d = document.getElementById('jsErrorBar');
+      if (!d) {
+        d = document.createElement('div');
+        d.id = 'jsErrorBar';
+        d.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c0392b;color:#fff;padding:6px 10px;font:12px/1.5 monospace;white-space:pre-wrap;max-height:40vh;overflow:auto;';
+        (document.body || document.documentElement).appendChild(d);
+      }
+      d.style.display = 'block';
+      d.textContent += text + '\n';
+    }
+  </script>
   <!-- 使用 importmap 引入 Three.js ES Module -->
   <script type="importmap">
   {
@@ -169,6 +194,6 @@
   </div>
 
   <!-- 游戏主模块 (添加版本号防止缓存) -->
-  <script type="module" src="/js/game.js?v=1782823400"></script>
+  <script type="module" src="/js/game.js?v=1782823800"></script>
 </body>
 </html>

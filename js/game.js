@@ -8,10 +8,10 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1782823400';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782823400';
-import { GameAudio } from './audio.js?v=1782823400';
-import { ParkourManager } from './parkour.js?v=1782823400';
+} from './voxel.js?v=1782823800';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782823800';
+import { GameAudio } from './audio.js?v=1782823800';
+import { ParkourManager } from './parkour.js?v=1782823800';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -699,9 +699,9 @@ class Game {
     this.blockTypes = [
       BlockType.GRASS, BlockType.DIRT, BlockType.STONE,
       BlockType.SAND, BlockType.WOOD, BlockType.LEAVES,
-      BlockType.COBBLESTONE, BlockType.PLANKS, BlockType.BRICK,
-      BlockType.GLASS, BlockType.COAL_ORE, BlockType.IRON_ORE,
-      BlockType.GOLD_ORE, BlockType.DIAMOND_ORE,
+      BlockType.COBBLESTONE, BlockType.BIRCH_WOOD, BlockType.BRICK,
+      BlockType.GLASS, BlockType.SANDSTONE, BlockType.MOSSY_COBBLESTONE,
+      BlockType.SNOW_BLOCK, BlockType.DIAMOND_BLOCK,
     ];
     this.selectedSlot = 0;
     
@@ -848,11 +848,16 @@ class Game {
     // 初始化机器人生成管理器
     this.animalManager = new AnimalManager(this.scene, this.world, this.isMobile);
 
-    // 初始化跑酷模式管理器（融合跑酷 + 建造）
-    this.parkourManager = new ParkourManager(
-      this.scene, this.world, this.animalManager, this.audio,
-      (msg) => this._showMessage(msg)
-    );
+    // 初始化跑酷模式管理器（融合跑酷 + 建造）— try-catch 保护，避免阻断后续 _initEvents
+    try {
+      this.parkourManager = new ParkourManager(
+        this.scene, this.world, this.animalManager, this.audio,
+        (msg) => this._showMessage(msg)
+      );
+    } catch (err) {
+      console.error('[ParkourManager] 初始化失败:', err);
+      this.parkourManager = null;
+    }
 
     // 相机：移动端更广视角（90°），桌面端默认（75°）
     this.defaultFov = this.isMobile ? 90 : 75;
@@ -1055,7 +1060,7 @@ class Game {
       // V键 - 切换BuilderBot跟随/待命
       if (e.code === 'KeyV') {
         if (this.animalManager) {
-          const bots = this.animalManager.animals.filter(a => a instanceof BuilderBot && !a.buildMode);
+          const bots = this.animalManager.robots.filter(a => a instanceof BuilderBot && !a.buildMode);
           if (bots.length > 0) {
             const bot = bots[0];
             if (bot.followingPlayer) {
@@ -1406,7 +1411,7 @@ class Game {
 
     let buildInfo = '';
     if (this.animalManager) {
-      const builders = this.animalManager.animals.filter(a => a instanceof BuilderBot && a.buildMode);
+      const builders = this.animalManager.robots.filter(a => a instanceof BuilderBot && a.buildMode);
       if (builders.length > 0) {
         const b = builders[0];
         buildInfo = `<br><span style="color:#FFD700">🏗️ ${b.currentStructure || '建造中'} ${b.getBuildProgress()}%</span>`;

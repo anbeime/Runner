@@ -10,8 +10,8 @@
  *   5. heart     奖励爱心段（恢复生命 + 加分）
  */
 import * as THREE from 'three';
-import { BlockType, isSolid } from './voxel.js?v=1782823400';
-import { BuilderBot } from './animals.js?v=1782823400';
+import { BlockType, isSolid } from './voxel.js?v=1782823800';
+import { BuilderBot } from './animals.js?v=1782823800';
 
 /* ============================================
    常量
@@ -43,7 +43,7 @@ const PARKOUR_TEMPLATES = {
       // 落脚平台（段首 4 格）
       for (let z = 0; z < LANDING_PAD_LEN; z++)
         for (let x = -2; x <= 2; x++)
-          b.push({ x, y: 0, z, type: BlockType.PLANKS });
+          b.push({ x, y: 0, z, type: BlockType.WOOD });
       // 桥面：6 格 + 间隙2格 + 6 格 + 间隙2格 + 4 格
       let z = LANDING_PAD_LEN;
       const segLens = [6, 6, 4];
@@ -59,7 +59,7 @@ const PARKOUR_TEMPLATES = {
       // 段尾落脚平台
       for (let dz = 0; dz < LANDING_PAD_LEN && z < SEGMENT_LENGTH; dz++, z++)
         for (let x = -2; x <= 2; x++)
-          b.push({ x, y: 0, z, type: BlockType.PLANKS });
+          b.push({ x, y: 0, z, type: BlockType.WOOD });
       // 桥两侧栏杆（点缀）
       for (let zz = LANDING_PAD_LEN; zz < SEGMENT_LENGTH - LANDING_PAD_LEN; zz += 3) {
         b.push({ x: -3, y: 1, z: zz, type: BlockType.WOOD });
@@ -93,7 +93,7 @@ const PARKOUR_TEMPLATES = {
           }
         }
         // 缺口上方标记（醒目）
-        b.push({ x: gap, y: 3, z: wz, type: BlockType.GOLD_ORE });
+        b.push({ x: gap, y: 3, z: wz, type: BlockType.GLASS });
       }
       // 段中地面填充
       for (let z = LANDING_PAD_LEN; z < SEGMENT_LENGTH; z++) {
@@ -160,7 +160,7 @@ const PARKOUR_TEMPLATES = {
       // 段首落脚
       for (let z = 0; z < LANDING_PAD_LEN; z++)
         for (let x = -2; x <= 2; x++)
-          b.push({ x, y: 0, z, type: BlockType.PLANKS });
+          b.push({ x, y: 0, z, type: BlockType.WOOD });
       // 5 个浮空平台，高度递增再递减
       const platforms = [
         { z: 7, x: 0, y: 0 },
@@ -172,14 +172,14 @@ const PARKOUR_TEMPLATES = {
       for (const p of platforms) {
         for (let dx = -1; dx <= 1; dx++) {
           for (let dz = -1; dz <= 1; dz++) {
-            b.push({ x: p.x + dx, y: p.y, z: p.z + dz, type: BlockType.DIAMOND_ORE });
+            b.push({ x: p.x + dx, y: p.y, z: p.z + dz, type: BlockType.DIAMOND_BLOCK });
           }
         }
       }
       // 段尾落脚
       for (let z = 23; z < SEGMENT_LENGTH; z++)
         for (let x = -2; x <= 2; x++)
-          b.push({ x, y: 0, z, type: BlockType.PLANKS });
+          b.push({ x, y: 0, z, type: BlockType.WOOD });
       return b;
     },
   },
@@ -194,7 +194,7 @@ const PARKOUR_TEMPLATES = {
       // 大平台
       for (let z = 0; z < SEGMENT_LENGTH; z++)
         for (let x = -4; x <= 4; x++)
-          b.push({ x, y: 0, z, type: BlockType.PLANKS });
+          b.push({ x, y: 0, z, type: BlockType.WOOD });
       // 中心像素爱心（9 高 12 宽）
       const heart = [
         '...@@...@@...',
@@ -224,7 +224,7 @@ const PARKOUR_TEMPLATES = {
         { x: -4, y: 2, z: 4 }, { x: 4, y: 2, z: 4 },
         { x: -4, y: 2, z: 18 }, { x: 4, y: 2, z: 18 },
       ];
-      for (const g of gems) b.push({ ...g, type: BlockType.DIAMOND_ORE });
+      for (const g of gems) b.push({ ...g, type: BlockType.DIAMOND_BLOCK });
       return b;
     },
   },
@@ -339,7 +339,8 @@ export class ParkourManager {
   /** 玩家失败：扣命 + 重置到段首 */
   _onFail(player) {
     this.lives--;
-    if (this.audio) this.audio.playDamage();
+    if (this.audio && this.audio.playDamage) this.audio.playDamage();
+    else if (this.audio) this.audio.playJump();
 
     if (this.lives <= 0) {
       this.showMessage(`💀 跑酷失败！得分 ${this.score} | 距离 ${Math.floor(this.distance)}`);
@@ -443,7 +444,7 @@ export class ParkourManager {
     for (let dx = -half; dx <= half; dx++) {
       for (let dz = -half; dz <= half; dz++) {
         if (!isSolid(this.world.getBlock(cx + dx, cy, cz + dz))) {
-          this.world.setBlock(cx + dx, cy, cz + dz, BlockType.PLANKS);
+          this.world.setBlock(cx + dx, cy, cz + dz, BlockType.WOOD);
         }
       }
     }
@@ -499,7 +500,7 @@ export class ParkourManager {
 
     // === 落地音效 ===
     if (player.onGround && !this._wasOnGround && player.velocity.y < -2) {
-      if (this.audio) this.audio.playLand(BlockType.PLANKS);
+      if (this.audio) this.audio.playLand(BlockType.WOOD);
     }
     this._wasOnGround = player.onGround;
 
