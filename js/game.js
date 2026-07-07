@@ -1041,8 +1041,15 @@ class Game {
 
   /** 绑定事件监听 */
   _initEvents() {
+    // === 优先绑定按钮事件（确保即使后续抛错也能点击）===
+    const sandboxBtn = this.ui.startScreen.querySelector('[data-mode="sandbox"]');
+    const parkourBtn = this.ui.startScreen.querySelector('[data-mode="parkour"]');
+    if (sandboxBtn) sandboxBtn.addEventListener('click', () => this._enterGame('sandbox'));
+    if (parkourBtn) parkourBtn.addEventListener('click', () => this._enterGame('parkour'));
+
     // 键盘事件（桌面端 + 移动端外接键盘通用）
     document.addEventListener('keydown', (e) => {
+      if (!this.player) return;
       this.player.keys[e.code] = true;
 
       // 数字键选择方块
@@ -1125,6 +1132,7 @@ class Game {
     });
 
     document.addEventListener('keyup', (e) => {
+      if (!this.player) return;
       this.player.keys[e.code] = false;
     });
 
@@ -1185,23 +1193,12 @@ class Game {
         }
       };
 
-      // 开始界面：双入口按钮（沙盒 / 试玩跑酷）
-      const sandboxBtn = this.ui.startScreen.querySelector('[data-mode="sandbox"]');
-      const parkourBtn = this.ui.startScreen.querySelector('[data-mode="parkour"]');
-      if (sandboxBtn) sandboxBtn.addEventListener('click', () => this._enterGame('sandbox'));
-      if (parkourBtn) parkourBtn.addEventListener('click', () => this._enterGame('parkour'));
-
       this.ui.pauseScreen.addEventListener('click', requestLock);
       this.canvas.addEventListener('click', requestLock);
     }
 
     // ----- 移动端：直接进入游戏 + 触摸控制 -----
     if (this.isMobile) {
-      // 开始界面：双入口按钮（移动端同样支持）
-      const sandboxBtn = this.ui.startScreen.querySelector('[data-mode="sandbox"]');
-      const parkourBtn = this.ui.startScreen.querySelector('[data-mode="parkour"]');
-      if (sandboxBtn) sandboxBtn.addEventListener('click', () => this._enterGame('sandbox'));
-      if (parkourBtn) parkourBtn.addEventListener('click', () => this._enterGame('parkour'));
 
       this.ui.pauseScreen.addEventListener('click', () => {
         this.isRunning = true;
