@@ -11,7 +11,7 @@ import {
 } from './voxel.js?v=1782823800';
 import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782823800';
 import { GameAudio } from './audio.js?v=1782823800';
-import { ParkourManager } from './parkour.js?v=1782823800';
+import { ParkourManager } from './parkour.js?v=1782824200';
 
 /* ============================================
    玩家类 - 第一人称角色控制

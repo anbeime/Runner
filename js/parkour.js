@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { BlockType, isSolid } from './voxel.js?v=1782823800';
 import { BuilderBot } from './animals.js?v=1782823800';
+// 注：parkour.js 自身版本通过 game.js 的 import 链路控制缓存
 
 /* ============================================
    常量
@@ -273,12 +274,107 @@ export class ParkourManager {
     this.currentSegmentName = '';
     // 速度倍率（随段数提升）
     this.speedMultiplier = 1.0;
+    // 玩家可见模型（第三人称下显示）
+    this.playerAvatar = null;
+    // 跑步动画相位
+    this._animPhase = 0;
+    // 是否在地面（动画用）
+    this._animOnGround = false;
+  }
+
+  /** 创建第三人称玩家可见模型（像素小人） */
+  _createPlayerAvatar() {
+    const group = new THREE.Group();
+
+    // 像素小人各部位材质（Minecraft Steve 风格配色）
+    const skinMat = new THREE.MeshLambertMaterial({ color: 0xF9C39B });   // 皮肤
+    const shirtMat = new THREE.MeshLambertMaterial({ color: 0x3DB85C });  // 绿上衣
+    const pantsMat = new THREE.MeshLambertMaterial({ color: 0x3A4F9B });  // 蓝裤子
+    const hairMat = new THREE.MeshLambertMaterial({ color: 0x4A2E14 });   // 头发
+    const shoeMat = new THREE.MeshLambertMaterial({ color: 0x4A4A4A });   // 鞋
+
+    // 头部（8x8x8 像素，缩放为 0.5 格）
+    const head = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), skinMat);
+    head.position.y = 1.55;
+    group.add(head);
+
+    // 头发顶
+    const hair = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.15, 0.55), hairMat);
+    hair.position.y = 1.85;
+    group.add(hair);
+
+    // 身体（4x6x2 像素）
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.6, 0.25), shirtMat);
+    body.position.y = 1.0;
+    group.add(body);
+
+    // 左臂
+    const leftArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.6, 0.22), shirtMat);
+    leftArm.position.set(-0.32, 1.0, 0);
+    leftArm.name = 'leftArm';
+    group.add(leftArm);
+
+    // 右臂
+    const rightArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.6, 0.22), shirtMat);
+    rightArm.position.set(0.32, 1.0, 0);
+    rightArm.name = 'rightArm';
+    group.add(rightArm);
+
+    // 左腿
+    const leftLeg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.22), pantsMat);
+    leftLeg.position.set(-0.13, 0.35, 0);
+    leftLeg.name = 'leftLeg';
+    group.add(leftLeg);
+
+    // 右腿
+    const rightLeg = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 0.22), pantsMat);
+    rightLeg.position.set(0.13, 0.35, 0);
+    rightLeg.name = 'rightLeg';
+    group.add(rightLeg);
+
+    // 鞋（覆盖腿底部）
+    const leftShoe = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.1, 0.24), shoeMat);
+    leftShoe.position.set(-0.13, 0.1, 0);
+    group.add(leftShoe);
+    const rightShoe = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.1, 0.24), shoeMat);
+    rightShoe.position.set(0.13, 0.1, 0);
+    group.add(rightShoe);
+
+    group.visible = false;
+    this.scene.add(group);
+    return group;
+  }
+
+  /** 更新玩家模型位置和动画 */
+  _updatePlayerAvatar(player, dt) {
+    if (!this.playerAvatar) return;
+    this.playerAvatar.visible = true;
+    this.playerAvatar.position.copy(player.position);
+
+    // 跑步动画：腿和臂前后摆动
+    this._animPhase += dt * 10;
+    const swing = Math.sin(this._animPhase) * 0.5;
+    const jumpFactor = player.onGround ? 1 : 0.2;
+
+    const leftArm = this.playerAvatar.getObjectByName('leftArm');
+    const rightArm = this.playerAvatar.getObjectByName('rightArm');
+    const leftLeg = this.playerAvatar.getObjectByName('leftLeg');
+    const rightLeg = this.playerAvatar.getObjectByName('rightLeg');
+
+    if (leftArm) leftArm.rotation.x = swing * jumpFactor;
+    if (rightArm) rightArm.rotation.x = -swing * jumpFactor;
+    if (leftLeg) leftLeg.rotation.x = -swing * jumpFactor;
+    if (rightLeg) rightLeg.rotation.x = swing * jumpFactor;
   }
 
   /** 进入跑酷模式 */
   start(player) {
     if (this.active) return;
     this.active = true;
+    // 创建第三人称玩家可见模型
+    if (!this.playerAvatar) {
+      this.playerAvatar = this._createPlayerAvatar();
+    }
     this.score = 0;
     this.distance = 0;
     this.lives = MAX_LIVES;
@@ -326,6 +422,9 @@ export class ParkourManager {
   stop(player) {
     if (!this.active) return;
     this.active = false;
+
+    // 隐藏玩家模型
+    if (this.playerAvatar) this.playerAvatar.visible = false;
 
     // 恢复玩家状态
     if (player && this._savedState) {
@@ -510,20 +609,22 @@ export class ParkourManager {
       return;
     }
 
-    // === 更新相机（第三人称跟随，能看到前方建造） ===
-    // 相机在玩家后上方，看向玩家前方
-    const camOffset = new THREE.Vector3(0, 5, 10);
+    // === 更新相机（第三人称跟随，玩家居中偏下，能看到前方建造） ===
     const targetCamPos = new THREE.Vector3(
       player.position.x,
-      player.position.y + 4,
-      player.position.z + 10
+      player.position.y + 3.5,
+      player.position.z + 7
     );
-    player.camera.position.lerp(targetCamPos, Math.min(1, dt * 5));
+    player.camera.position.lerp(targetCamPos, Math.min(1, dt * 6));
+    // 看向玩家前方一点（让玩家在画面下方，前方路径在上方）
     player.camera.lookAt(
       player.position.x,
-      player.position.y + 1,
-      player.position.z - 8
+      player.position.y + 0.8,
+      player.position.z - 5
     );
+
+    // === 更新玩家可见模型位置和跑步动画 ===
+    this._updatePlayerAvatar(player, dt);
 
     // === 距离 + 分数累加 ===
     this.distance = Math.max(this.distance, this.startPos.z - player.position.z);
