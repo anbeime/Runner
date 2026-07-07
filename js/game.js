@@ -1242,7 +1242,14 @@ class Game {
     if (this.animalManager && this.animalManager.robots) {
       const bx = this.player.position.x + 8;
       const bz = this.player.position.z - 10;
-      const by = this.world.getHeightAt(bx, bz) || 20;
+      // 从上往下扫描找地表高度（World 类没有 getHeightAt，用 getBlock 替代）
+      let by = 20;
+      for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+        if (isSolid(this.world.getBlock(Math.floor(bx), y, Math.floor(bz)))) {
+          by = y + 1;
+          break;
+        }
+      }
       const builder = new BuilderBot(this.scene, this.world, bx, by, bz);
       builder.setFollowPlayer(this.player);
       this.animalManager.robots.push(builder);
