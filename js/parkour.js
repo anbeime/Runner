@@ -533,8 +533,7 @@ export class ParkourManager {
   /** 玩家失败：扣命 + 重置 */
   _onFail(player) {
     this.lives--;
-    if (this.audio && this.audio.playDamage) this.audio.playDamage();
-    else if (this.audio) this.audio.playJump();
+    if (this.audio) this.audio.playDamage();
 
     if (this.lives <= 0) {
       this.showMessage(`💀 跑酷失败！得分 ${this.score} | 距离 ${Math.floor(this.distance)} | 金币 ${this.coins}`);
@@ -544,8 +543,8 @@ export class ParkourManager {
       return;
     }
 
-    // 重置到起点（保留分数）
-    player.position.copy(this.startPos);
+    // 原地重置：保持在当前 Z 位置（路径仍在），重置到跑道顶面，避免传送到已清理的旧区域
+    player.position.set(0, PARKOUR_START_Y + 1, Math.floor(player.position.z));
     player.velocity.set(0, 0, 0);
     this._targetLane = 1;
     this._targetX = 0;
@@ -638,9 +637,10 @@ export class ParkourManager {
     // Y 轴：跑道支撑检测（跑道顶面 Y = PARKOUR_START_Y，X 范围 -3~3）
     player.position.y += player.velocity.y * dt;
     const trackTopY = PARKOUR_START_Y;
+    // 玩家宽度容差：车道切换中仍可被跑道支撑
     const playerHalfW = 0.3;
-    const inTrackX = player.position.x > (-3 + playerHalfW) && player.position.x < (3 - playerHalfW);
-    if (inTrackX && player.velocity.y <= 0 && player.position.y <= trackTopY) {
+    const inTrackX = player.position.x > (-3 - playerHalfW) && player.position.x < (3 + playerHalfW);
+    if (inTrackX && player.velocity.y <= 0 && player.position.y <= trackTopY + 0.1) {
       player.position.y = trackTopY;
       player.velocity.y = 0;
       player.onGround = true;

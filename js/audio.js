@@ -65,21 +65,32 @@ export class GameAudio {
 
   /** 初始化（需用户交互后调用） */
   async init() {
-    if (this.ctx) return;
+    if (this.ctx) {
+      // 已初始化：移动端可能处于 suspended 状态，需 resume
+      if (this.ctx.state === 'suspended') {
+        try { await this.ctx.resume(); } catch(e) {}
+      }
+      return;
+    }
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    
+
     this.masterGain = this.ctx.createGain();
     this.masterGain.gain.value = 1.0;
     this.masterGain.connect(this.ctx.destination);
-    
+
     this.musicGain = this.ctx.createGain();
     this.musicGain.gain.value = this._musicVol;
     this.musicGain.connect(this.masterGain);
-    
+
     this.sfxGain = this.ctx.createGain();
     this.sfxGain.gain.value = this._sfxVol;
     this.sfxGain.connect(this.masterGain);
-    
+
+    // 移动端浏览器创建后通常处于 suspended 状态，需 resume 才能播放
+    if (this.ctx.state === 'suspended') {
+      try { await this.ctx.resume(); } catch(e) {}
+    }
+
     this._startMusic();
     this.isPlaying = true;
   }
@@ -342,6 +353,35 @@ export class GameAudio {
     osc.stop(now + 0.2);
     
     setTimeout(() => { try { osc.disconnect(); env.disconnect(); } catch(e){} }, 300);
+  }
+
+  /* ============================================
+     音效 —— 受伤/失败
+     ============================================ */
+  playDamage() {
+    if (!this.ctx || this.isSfxMuted) return;
+    const now = this.ctx.currentTime;
+    // 低沉的"咚"声 + 下滑音
+    const osc = this.ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(300, now);
+    osc.frequency.exponentialRampToValueAtTime(60, now + 0.3);
+
+    const filt = this.ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 800;
+
+    const env = this.ctx.createGain();
+    env.gain.setValueAtTime(0, now);
+    env.gain.linearRampToValueAtTime(0.12, now + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc.connect(filt);
+    filt.connect(env);
+    env.connect(this.sfxGain);
+    osc.start(now);
+    osc.stop(now + 0.4);
+    setTimeout(() => { try { osc.disconnect(); filt.disconnect(); env.disconnect(); } catch(e){} }, 500);
   }
 
   /* ============================================
