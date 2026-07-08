@@ -400,8 +400,8 @@ export class ParkourManager {
       const dx = Math.abs(ox - px);
       if (dx > oHalfW + pHalfW) continue;
 
-      // Y 方向重叠
-      if (py + 1.8 < oBottom || pBottom > oTop) continue;
+      // Y 方向重叠（用 pTop 而非固定 1.8，正确处理滑铲）
+      if (pTop <= oBottom || pBottom >= oTop) continue;
 
       // 命中
       if (obs.userData.kind === ObstacleKind.COIN) {
@@ -634,13 +634,13 @@ export class ParkourManager {
     // X 轴：车道插值移动，无需碰撞检测（_targetX 已限制在车道范围）
     player.position.x += player.velocity.x * dt;
 
-    // Y 轴：跑道支撑检测（跑道顶面 Y = PARKOUR_START_Y，X 范围 -3~3）
+    // Y 轴：跑道支撑检测（跑道顶面 Y = PARKOUR_START_Y，跑道沿 Z 无限延伸）
     player.position.y += player.velocity.y * dt;
     const trackTopY = PARKOUR_START_Y;
-    // 玩家宽度容差：车道切换中仍可被跑道支撑
     const playerHalfW = 0.3;
     const inTrackX = player.position.x > (-3 - playerHalfW) && player.position.x < (3 + playerHalfW);
-    if (inTrackX && player.velocity.y <= 0 && player.position.y <= trackTopY + 0.1) {
+    // 下落中且低于跑道顶面（含容差）时支撑；高于跑道时不干预（跳跃中）
+    if (inTrackX && player.velocity.y <= 0 && player.position.y <= trackTopY + 0.5) {
       player.position.y = trackTopY;
       player.velocity.y = 0;
       player.onGround = true;

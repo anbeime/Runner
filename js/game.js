@@ -1534,17 +1534,15 @@ class Game {
       this.player.keys['KeyD'] = tc.moveX > deadZone;
     }
 
-    // 桌面端指针锁定 或 移动端运行时更新游戏逻辑
-    if (this.isPointerLocked || (this.isMobile && this.isRunning)) {
-      if (this.parkourManager && this.parkourManager.active) {
-        // 跑酷模式：由 ParkourManager 接管玩家控制
-        this.parkourManager.update(dt, this.player);
-        this.world.update(this.player.position.x, this.player.position.z);
-      } else {
-        this.player.update(dt);
-        this.world.update(this.player.position.x, this.player.position.z);
-        this.highlight.update(this.player.targetBlock);
-      }
+    // 跑酷模式：active 时直接更新（第三人称，不依赖指针锁定）
+    if (this.parkourManager && this.parkourManager.active) {
+      this.parkourManager.update(dt, this.player);
+      this.world.update(this.player.position.x, this.player.position.z);
+    } else if (this.isPointerLocked || (this.isMobile && this.isRunning)) {
+      // 沙盒模式：桌面端需指针锁定，移动端运行时即更新
+      this.player.update(dt);
+      this.world.update(this.player.position.x, this.player.position.z);
+      this.highlight.update(this.player.targetBlock);
     }
 
     // 云彩缓慢移动（始终运行）
