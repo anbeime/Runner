@@ -92,19 +92,24 @@
         <span id="parkourDistance" class="parkour-value">0</span>
       </div>
       <div class="parkour-stat">
+        <span class="parkour-label">金币</span>
+        <span id="parkourCoins" class="parkour-value">0</span>
+      </div>
+      <div class="parkour-stat">
         <span class="parkour-label">生命</span>
         <span id="parkourLives" class="parkour-value">❤❤❤</span>
       </div>
       <div class="parkour-stat">
-        <span class="parkour-label">段</span>
-        <span id="parkourSegment" class="parkour-value">0</span>
+        <span class="parkour-label">状态</span>
+        <span id="parkourSegment" class="parkour-value">中</span>
       </div>
       <div class="parkour-stat">
         <span class="parkour-label">速度</span>
         <span id="parkourSpeed" class="parkour-value">100%</span>
       </div>
     </div>
-    <div class="parkour-hint"><kbd>A</kbd><kbd>D</kbd> 左右 · <kbd>空格</kbd> 跳跃 · <kbd>P</kbd> 退出</div>
+    <div id="parkourMessage" class="parkour-message" style="display:none;"></div>
+    <div class="parkour-hint"><kbd>A</kbd><kbd>D</kbd> 切换车道 · <kbd>空格</kbd> 跳跃 · <kbd>S</kbd> 滑铲 · <kbd>P</kbd> 退出</div>
   </div>
 
   <!-- 加载进度 -->
@@ -194,7 +199,7 @@
   </div>
 
   <!-- 游戏主模块 (添加版本号防止缓存) -->
-  <script type="module" src="/js/game.js?v=1782824500"></script>
+  <script type="module" src="/js/game.js?v=1782824600"></script>
   <!-- 诊断：确认 game.js 是否执行 -->
   <script>
     window.__gameLoadCheck = setTimeout(function() {

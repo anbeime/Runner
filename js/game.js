@@ -11,7 +11,7 @@ import {
 } from './voxel.js?v=1782823800';
 import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782824300';
 import { GameAudio } from './audio.js?v=1782823800';
-import { ParkourManager } from './parkour.js?v=1782824500';
+import { ParkourManager } from './parkour.js?v=1782824600';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -1320,8 +1320,23 @@ class Game {
     document.getElementById('parkourScore').textContent = data.score.toLocaleString();
     document.getElementById('parkourDistance').textContent = data.distance;
     document.getElementById('parkourLives').textContent = hearts;
-    document.getElementById('parkourSegment').textContent = `${data.segment} · ${data.segmentName}`;
+    // 兼容新 endless runner 数据结构（金币 + 消息 + 车道）
+    const coinEl = document.getElementById('parkourCoins');
+    if (coinEl) coinEl.textContent = data.coins || 0;
+    const segEl = document.getElementById('parkourSegment');
+    if (segEl) {
+      const laneNames = ['左', '中', '右'];
+      const laneText = data.lane != null ? `车道:${laneNames[data.lane] || '中'}` : '';
+      const slideText = data.sliding ? ' · 滑铲中' : '';
+      segEl.textContent = `${laneText}${slideText}`;
+    }
     document.getElementById('parkourSpeed').textContent = data.speed + '%';
+    // 显示临时消息
+    const msgEl = document.getElementById('parkourMessage');
+    if (msgEl) {
+      msgEl.textContent = data.message || '';
+      msgEl.style.display = data.message ? 'block' : 'none';
+    }
     hud.style.display = 'block';
   }
 
