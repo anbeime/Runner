@@ -8,10 +8,10 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1782823800';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782824300';
-import { GameAudio } from './audio.js?v=1782823800';
-import { ParkourManager } from './parkour.js?v=1782824600';
+} from './voxel.js?v=1783520000';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1783520000';
+import { GameAudio } from './audio.js?v=1783520000';
+import { ParkourManager } from './parkour.js?v=1783520000';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -739,6 +739,14 @@ class Game {
     // 开始界面保持显示，背后渲染 3D 世界
     this.ui.loadingBar.style.display = 'block';
 
+    // 早期标记初始化完成：避免移动端区块加载耗时超过诊断超时（3秒）
+    // 区块加载循环可能耗时较长（移动端约49个区块 + setTimeout 让步），不应阻塞就绪标记
+    window.__gameReady = true;
+    // 早期启动渲染循环：让开始界面背后逐步呈现世界，同时区块仍在加载
+    if (this.webglAvailable) {
+      this.animate();
+    }
+
     const radius = this.renderDistance;
 
     // 按离世界中心距离排序，优先加载"BILIBILI"立墙区域
@@ -765,6 +773,7 @@ class Game {
         const chunk = await this._createChunk(cx, cz);
         if (chunk.mesh) this.scene.add(chunk.mesh);
         if (chunk.waterMesh) this.scene.add(chunk.waterMesh);
+        if (chunk.flowerMesh) this.scene.add(chunk.flowerMesh);
         generated++;
         this.ui.loadingFill.style.width = `${(generated / needed * 100) | 0}%`;
 
@@ -775,16 +784,24 @@ class Game {
         }
 
         this.renderer.render(this.scene, this.camera);
-        if (generated % (this.isMobile ? 1 : 3) === 0) {
+        // 移动端每 2 个区块让步一次（降低 setTimeout 节流累计耗时），桌面端每 3 个
+        if (generated % (this.isMobile ? 2 : 3) === 0) {
           await new Promise(r => setTimeout(r, 0));
         }
       }
     }
 
-    // 出生在用户指定位置（仅设玩家数据，相机保持在立墙视角）
+    // 出生在立墙前方（仅设玩家数据，相机保持在立墙视角）
     this._spawnX = 5.4;
     this._spawnZ = 22.6;
-    this._spawnY = -27.0;
+    // 从上往下扫描找到地表高度（避免出生在地下）
+    this._spawnY = 20;
+    for (let y = CHUNK_HEIGHT - 1; y >= 0; y--) {
+      if (isSolid(this.world.getBlock(Math.floor(this._spawnX), y, Math.floor(this._spawnZ)))) {
+        this._spawnY = y + 1;
+        break;
+      }
+    }
     this.player.position.set(this._spawnX, this._spawnY, this._spawnZ);
     this.player.yaw = 0;              // 面朝正北，正对树叶文字立墙
     this.player.pitch = -0.3;         // 微俯视，观赏立墙全貌
@@ -805,7 +822,10 @@ class Game {
 
     const chunk = new Chunk(cx, cz);
     this.world.generateChunkData(chunk);
-    chunk.buildMesh((wx, wy, wz) => this.world.getBlock(wx, wy, wz), this.world.material, this.world.waterMaterial);
+    chunk.buildMesh(
+      (wx, wy, wz) => this.world.getBlock(wx, wy, wz),
+      this.world.material, this.world.waterMaterial, this.world.flowerMaterial
+    );
     this.world.chunks.set(key, chunk);
     return chunk;
   }
@@ -1568,17 +1588,15 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     const game = new Game();
     window.__game = game; // 暴露到全局便于调试
+    // init() 内部会早期设置 window.__gameReady 和启动 animate()，避免移动端区块加载超时
     await game.init();
-    window.__gameReady = true; // 诊断标记：初始化完成
-    // WebGL 不可用时不再启动渲染循环（_showWebGLError 已提示用户）
-    if (game.webglAvailable) {
-      game.animate();
-    }
   } catch (err) {
     console.error('[Game] 启动失败:', err);
     const detail = (err && (err.stack || err.message)) || (typeof err === 'object' ? JSON.stringify(err) : String(err));
     if (window.showError) {
       window.showError('[Game 启动失败] type=' + (err && err.constructor && err.constructor.name) + ' detail=' + detail);
     }
+    // 即使失败也标记就绪，避免诊断超时误报遮盖真实错误
+    window.__gameReady = true;
   }
 });

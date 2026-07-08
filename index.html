@@ -199,14 +199,14 @@
   </div>
 
   <!-- 游戏主模块 (添加版本号防止缓存) -->
-  <script type="module" src="/js/game.js?v=1782824700"></script>
-  <!-- 诊断：确认 game.js 是否执行 -->
+  <script type="module" src="/js/game.js?v=1783520000"></script>
+  <!-- 诊断：确认 game.js 是否执行（超时放宽到 10 秒，覆盖移动端区块加载耗时） -->
   <script>
     window.__gameLoadCheck = setTimeout(function() {
       if (!window.__gameReady) {
-        showError('[诊断] game.js 在 3 秒内未完成初始化，可能模块加载失败或执行抛错');
+        showError('[诊断] game.js 在 10 秒内未完成初始化，可能模块加载失败或执行抛错');
       }
-    }, 3000);
+    }, 10000);
   </script>
 </body>
 </html>
