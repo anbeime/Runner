@@ -835,13 +835,16 @@ html, body {
 }
 
 .parkour-hint {
-  font-size: 13px;
-  color: #FFD700;
+  font-size: 14px;
+  color: #FFEB3B;
   letter-spacing: 1px;
   margin-top: 4px;
   text-align: center;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(255,215,0,0.4);
+  text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,0.8);
   font-weight: bold;
+  background: rgba(0,0,0,0.4);
+  padding: 3px 8px;
+  border-radius: 4px;
 }
 
 .parkour-hint kbd {
@@ -879,4 +882,23 @@ html, body {
   .parkour-hint {
     font-size: 10px;
   }
+}
+
+/* 跑酷临时消息（失败/提示） */
+.parkour-message {
+  font-size: 15px;
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 8px rgba(255,215,0,0.6);
+  text-align: center;
+  padding: 4px 12px;
+  margin-top: 2px;
+}
+
+/* 游戏中央消息提示 */
+#gameMsg {
+  font-size: 22px !important;
+  font-weight: bold;
+  color: #fff;
+  text-shadow: 2px 2px 6px rgba(0,0,0,1), 0 0 12px rgba(255,215,0,0.8) !important;
 }

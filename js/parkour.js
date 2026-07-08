@@ -635,12 +635,10 @@ export class ParkourManager {
     player.position.x += player.velocity.x * dt;
 
     // Y 轴：跑道支撑检测（跑道顶面 Y = PARKOUR_START_Y，跑道沿 Z 无限延伸）
-    player.position.y += player.velocity.y * dt;
     const trackTopY = PARKOUR_START_Y;
-    const playerHalfW = 0.3;
-    const inTrackX = player.position.x > (-3 - playerHalfW) && player.position.x < (3 + playerHalfW);
-    // 下落中且低于跑道顶面（含容差）时支撑；高于跑道时不干预（跳跃中）
-    if (inTrackX && player.velocity.y <= 0 && player.position.y <= trackTopY + 0.5) {
+    player.position.y += player.velocity.y * dt;
+    if (player.velocity.y <= 0 && player.position.y <= trackTopY) {
+      // 下落且到达或低于跑道顶面：强制支撑
       player.position.y = trackTopY;
       player.velocity.y = 0;
       player.onGround = true;
