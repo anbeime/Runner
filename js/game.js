@@ -880,8 +880,7 @@ class Game {
     // 初始化跑酷模式管理器（融合跑酷 + 建造）— try-catch 保护，避免阻断后续 _initEvents
     try {
       this.parkourManager = new ParkourManager(
-        this.scene, this.world, this.animalManager, this.audio,
-        (msg) => this._showMessage(msg)
+        this.scene, this.world, this.audio
       );
     } catch (err) {
       console.error('[ParkourManager] 初始化失败:', err);
