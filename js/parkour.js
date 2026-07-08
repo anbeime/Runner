@@ -12,7 +12,7 @@
  *   - 体素世界在下方作为背景
  */
 import * as THREE from 'three';
-import { BlockType, isSolid } from './voxel.js?v=1783520000';
+import { BlockType } from './voxel.js?v=1783520000';
 
 /* ============================================
    常量
@@ -76,15 +76,21 @@ export class ParkourManager {
     this._slideTimer = 0;
     this._respawnCooldown = 0;
     this._wasOnGround = false;
+    this._laneSwitched = false;      // 防止按住 A/D 连续切换
 
     // 障碍物管理
     this.obstacles = [];             // {mesh, kind, lane, z, hit}
     this._nextSpawnZ = 0;            // 下一个障碍物 Z 坐标
     this._lastSpawnKind = null;      // 上次生成的类型（避免连续相同）
 
-    // 路径方块管理（已铺设的跑道）
-    this._placedBlocks = [];         // {x, y, z} 已放置的方块（用于回收）
+    // 路径方块管理（独立 Mesh，不写入体素世界，避免受 CHUNK_HEIGHT 限制 + 区块重建开销）
+    this._pathGroup = new THREE.Group();  // 所有跑道方块的父容器
+    this._pathGeo = new THREE.BoxGeometry(1, 1, 1);
+    this._pathMatWood = new THREE.MeshLambertMaterial({ color: 0x78503a });
+    this._pathMatStone = new THREE.MeshLambertMaterial({ color: 0x7a7a7a });
+    this._placedBlocks = [];         // {mesh, x, y, z} 已放置的方块（用于回收）
     this._pathMinZ = 0;              // 当前路径最小 Z（已生成最远位置）
+    this._pathBlockSet = new Set();  // "x,y,z" 集合，用于碰撞检测快速查询
 
     // 玩家可见模型
     this.playerAvatar = null;
@@ -311,7 +317,7 @@ export class ParkourManager {
      ============================================ */
 
   /**
-   * 在玩家前方铺设跑道方块
+   * 在玩家前方铺设跑道方块（独立 Mesh，不写入体素世界）
    * 跑道宽度 3 个车道（X: -3 ~ 3）
    */
   _layPath(targetZ) {
@@ -323,9 +329,12 @@ export class ParkourManager {
       const z = this._pathMinZ;
       for (let x = startX; x <= endX; x++) {
         // 跑道用木板，边缘用石头
-        const type = (x === startX || x === endX) ? BlockType.COBBLESTONE : BlockType.WOOD;
-        this.world.setBlock(x, y, z, type);
-        this._placedBlocks.push({ x, y, z });
+        const isEdge = (x === startX || x === endX);
+        const mesh = new THREE.Mesh(this._pathGeo, isEdge ? this._pathMatStone : this._pathMatWood);
+        mesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+        this._pathGroup.add(mesh);
+        this._placedBlocks.push({ mesh, x, y, z });
+        this._pathBlockSet.add(`${x},${y},${z}`);
       }
       this._pathMinZ--;
     }
@@ -337,7 +346,8 @@ export class ParkourManager {
     for (let i = this._placedBlocks.length - 1; i >= 0; i--) {
       const b = this._placedBlocks[i];
       if (b.z > cleanupZ) {
-        this.world.setBlock(b.x, b.y, b.z, BlockType.AIR);
+        this._pathGroup.remove(b.mesh);
+        this._pathBlockSet.delete(`${b.x},${b.y},${b.z}`);
         this._placedBlocks.splice(i, 1);
       }
     }
@@ -435,6 +445,7 @@ export class ParkourManager {
     this._slideTimer = 0;
     this._respawnCooldown = 0;
     this._wasOnGround = false;
+    this._laneSwitched = false;
 
     // 记录起点（固定高空）
     this.startPos.set(0, PARKOUR_START_Y + 1, Math.floor(player.position.z));
@@ -460,6 +471,9 @@ export class ParkourManager {
     // 清理旧障碍物和路径
     this._clearAllObstacles();
     this._clearAllPath();
+
+    // 将跑道容器加入场景
+    this.scene.add(this._pathGroup);
 
     // 初始化路径
     this._pathMinZ = Math.floor(player.position.z) + 5;
@@ -492,6 +506,7 @@ export class ParkourManager {
     // 清理障碍物和路径
     this._clearAllObstacles();
     this._clearAllPath();
+    this.scene.remove(this._pathGroup);
 
     this.showMessage('退出跑酷模式');
   }
@@ -509,9 +524,10 @@ export class ParkourManager {
   /** 清理所有路径方块 */
   _clearAllPath() {
     for (const b of this._placedBlocks) {
-      this.world.setBlock(b.x, b.y, b.z, BlockType.AIR);
+      this._pathGroup.remove(b.mesh);
     }
     this._placedBlocks = [];
+    this._pathBlockSet.clear();
   }
 
   /** 玩家失败：扣命 + 重置 */
@@ -613,14 +629,25 @@ export class ParkourManager {
       }
     }
 
-    // === 逐轴移动 + 碰撞 ===
+    // === 跑酷专用碰撞检测（跑道方块不在体素世界中，不能用 _resolveCollision）===
     player.onGround = false;
+
+    // X 轴：车道插值移动，无需碰撞检测（_targetX 已限制在车道范围）
     player.position.x += player.velocity.x * dt;
-    player._resolveCollision('x');
+
+    // Y 轴：跑道支撑检测（跑道顶面 Y = PARKOUR_START_Y，X 范围 -3~3）
     player.position.y += player.velocity.y * dt;
-    player._resolveCollision('y');
+    const trackTopY = PARKOUR_START_Y;
+    const playerHalfW = 0.3;
+    const inTrackX = player.position.x > (-3 + playerHalfW) && player.position.x < (3 - playerHalfW);
+    if (inTrackX && player.velocity.y <= 0 && player.position.y <= trackTopY) {
+      player.position.y = trackTopY;
+      player.velocity.y = 0;
+      player.onGround = true;
+    }
+
+    // Z 轴：自动前进，无需碰撞检测（障碍物碰撞在 _checkCollisions 中处理）
     player.position.z += player.velocity.z * dt;
-    player._resolveCollision('z');
 
     // === 落地音效 ===
     if (player.onGround && !this._wasOnGround && player.velocity.y < -2) {
