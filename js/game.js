@@ -535,7 +535,9 @@ class TouchController {
         if (t.identifier === this._lookTouchId) {
           const dx = t.clientX - this._lastTouchX;
           const dy = t.clientY - this._lastTouchY;
-          this.player.onMouseMove(dx * 1.8, dy * 1.8);
+          if (this.player && typeof this.player.onMouseMove === 'function') {
+            this.player.onMouseMove(dx * 1.8, dy * 1.8);
+          }
           this._lastTouchX = t.clientX;
           this._lastTouchY = t.clientY;
           break;
@@ -590,13 +592,13 @@ class TouchController {
       const _jumpDown = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.player.keys['Space'] = true;
+        if (this.player && this.player.keys) this.player.keys['Space'] = true;
         _flashBtn(btnJump);
       };
       const _jumpUp = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.player.keys['Space'] = false;
+        if (this.player && this.player.keys) this.player.keys['Space'] = false;
       };
       btnJump.addEventListener('pointerdown', _jumpDown);
       btnJump.addEventListener('pointerup', _jumpUp);
@@ -608,9 +610,11 @@ class TouchController {
       const _placeDown = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const ok = this.player.placeBlock();
-        _flashBtn(btnPlace, !ok);
-        if (!ok) _haptic(10);
+        if (this.player && typeof this.player.placeBlock === 'function') {
+          const ok = this.player.placeBlock();
+          _flashBtn(btnPlace, !ok);
+          if (!ok) _haptic(10);
+        }
       };
       btnPlace.addEventListener('pointerdown', _placeDown);
     }
@@ -619,9 +623,11 @@ class TouchController {
       const _breakDown = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        const ok = this.player.breakBlock();
-        _flashBtn(btnBreak, !ok);
-        if (!ok) _haptic(10);
+        if (this.player && typeof this.player.breakBlock === 'function') {
+          const ok = this.player.breakBlock();
+          _flashBtn(btnBreak, !ok);
+          if (!ok) _haptic(10);
+        }
       };
       btnBreak.addEventListener('pointerdown', _breakDown);
     }
@@ -1523,7 +1529,7 @@ class Game {
     }
 
     // 移动端：从触控控制器注入键盘输入
-    if (this.isMobile && this.touchController && this.isRunning) {
+    if (this.isMobile && this.touchController && this.isRunning && this.player) {
       const tc = this.touchController;
       const deadZone = 0.15;
       const absX = Math.abs(tc.moveX);
