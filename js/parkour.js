@@ -11,7 +11,7 @@
  */
 import * as THREE from 'three';
 import { BlockType, isSolid } from './voxel.js?v=1782823800';
-import { BuilderBot } from './animals.js?v=1782823800';
+import { BuilderBot } from './animals.js?v=1782824300';
 // 注：parkour.js 自身版本通过 game.js 的 import 链路控制缓存
 
 /* ============================================

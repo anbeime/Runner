@@ -596,7 +596,16 @@ export class BuilderBot extends Robot {
 
   setFollowPlayer(playerPos) {
     this.followingPlayer = true;
-    this.playerTarget = playerPos ? playerPos.clone() : null;
+    // 容错：接受 Player 对象、Vector3 或 null
+    if (!playerPos) {
+      this.playerTarget = null;
+    } else if (playerPos.isVector3) {
+      this.playerTarget = playerPos.clone();
+    } else if (playerPos.position && playerPos.position.isVector3) {
+      this.playerTarget = playerPos.position.clone();
+    } else {
+      this.playerTarget = null;
+    }
     this.state = 'follow';
   }
 

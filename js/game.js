@@ -9,7 +9,7 @@ import {
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
 } from './voxel.js?v=1782823800';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782823800';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1782824300';
 import { GameAudio } from './audio.js?v=1782823800';
 import { ParkourManager } from './parkour.js?v=1782824200';
 
@@ -1251,7 +1251,7 @@ class Game {
         }
       }
       const builder = new BuilderBot(this.scene, this.world, bx, by, bz);
-      builder.setFollowPlayer(this.player);
+      builder.setFollowPlayer(this.player.position.clone());
       this.animalManager.robots.push(builder);
       if (mode === 'sandbox') {
         this._showMessage('BuilderBot 已就绪，即将自动建造！');
