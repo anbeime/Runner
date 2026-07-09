@@ -851,10 +851,17 @@ export class AnimalManager {
     }
   }
 
-  /** 命令 BuilderBot 在玩家附近随机建造 */
+  /** 命令 BuilderBot 在玩家附近随机建造（优先空闲机器人，没有则命令正在建造的） */
   commandBuildNearPlayer(playerPos) {
+    // 优先找空闲的 BuilderBot
     for (const robot of this.robots) {
       if (robot instanceof BuilderBot && !robot.buildMode) {
+        return robot.startRandomBuildNearPlayer(playerPos);
+      }
+    }
+    // 没有空闲的，命令正在建造的机器人到玩家附近新位置建造
+    for (const robot of this.robots) {
+      if (robot instanceof BuilderBot) {
         return robot.startRandomBuildNearPlayer(playerPos);
       }
     }

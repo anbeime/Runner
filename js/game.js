@@ -59,6 +59,9 @@ class Player {
     // 射线检测结果缓存
     this.targetBlock = null;
     this.targetFace = null;
+
+    // 出生点（掉出世界后复活用）
+    this.spawnPoint = new THREE.Vector3(0, 22, 35);
   }
 
   /** 处理鼠标移动（视角旋转） */
@@ -154,10 +157,10 @@ class Player {
     this.position.z += this.velocity.z * dt;
     this._resolveCollision('z');
 
-    // 防止掉出世界
+    // 防止掉出世界：传送回出生点
     if (this.position.y < -10) {
-      this.position.y = 50;
-      this.velocity.y = 0;
+      this.position.copy(this.spawnPoint);
+      this.velocity.set(0, 0, 0);
     }
 
     // 更新相机
@@ -809,6 +812,7 @@ class Game {
       }
     }
     this.player.position.set(this._spawnX, this._spawnY, this._spawnZ);
+    this.player.spawnPoint.set(this._spawnX, this._spawnY, this._spawnZ);
     this.player.yaw = 0;              // 面朝正北，正对树叶文字立墙
     this.player.pitch = -0.3;         // 微俯视，观赏立墙全貌
 
@@ -1138,7 +1142,12 @@ class Game {
       // N键 - 生成新的BuilderBot
       if (e.code === 'KeyN') {
         if (this.animalManager && this.isRunning) {
-          this.animalManager.spawnBuilderNearPlayer(this.player.position);
+          const bot = this.animalManager.spawnBuilderNearPlayer(this.player.position);
+          if (bot) {
+            this._showMessage('BuilderBot 已生成！');
+          } else {
+            this._showMessage('附近没有合适的生成位置');
+          }
         }
       }
 
