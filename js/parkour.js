@@ -12,7 +12,7 @@
  *   - 体素世界在下方作为背景
  */
 import * as THREE from 'three';
-import { BlockType } from './voxel.js?v=1783558331';
+import { BlockType } from './voxel.js?v=1783575000';
 
 /* ============================================
    常量
@@ -538,8 +538,7 @@ export class ParkourManager {
     if (this.lives <= 0) {
       this.showMessage(`💀 跑酷失败！得分 ${this.score} | 距离 ${Math.floor(this.distance)} | 金币 ${this.coins}`);
       this.stop(player);
-      player.position.copy(this.startPos);
-      player.velocity.set(0, 0, 0);
+      // 不设置玩家位置，由游戏循环检测 active=false 后恢复到出生点
       return;
     }
 

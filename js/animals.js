@@ -4,7 +4,7 @@
  * 参考：【当AI完全体进入我的世界！！】
  */
 import * as THREE from 'three';
-import { BlockType, isSolid, CHUNK_SIZE } from './voxel.js?v=1783558331';
+import { BlockType, isSolid, CHUNK_SIZE } from './voxel.js?v=1783575000';
 
 /* ============================================
    常量配置

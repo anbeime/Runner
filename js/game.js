@@ -8,10 +8,10 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1783558331';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1783558331';
-import { GameAudio } from './audio.js?v=1783558331';
-import { ParkourManager } from './parkour.js?v=1783558331';
+} from './voxel.js?v=1783575000';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1783575000';
+import { GameAudio } from './audio.js?v=1783575000';
+import { ParkourManager } from './parkour.js?v=1783575000';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -1156,8 +1156,13 @@ class Game {
         if (this.parkourManager) {
           if (this.parkourManager.active) {
             this.parkourManager.stop(this.player);
+            this._setWorldVisible(true);
+            // 恢复玩家到出生点
+            this.player.position.copy(this.player.spawnPoint);
+            this.player.velocity.set(0, 0, 0);
             this._updateParkourHUD(false);
           } else {
+            this._setWorldVisible(false);
             this.parkourManager.start(this.player);
             this._updateParkourHUD(true);
           }
@@ -1316,6 +1321,7 @@ class Game {
     if (mode === 'parkour' && this.parkourManager) {
       setTimeout(() => {
         if (this.parkourManager && !this.parkourManager.active) {
+          this._setWorldVisible(false);
           this.parkourManager.start(this.player);
           this._updateParkourHUD(true);
         }
@@ -1384,6 +1390,22 @@ class Game {
       // 浏览器可能不支持 Web Audio
       this._musicStarted = false;
     });
+  }
+
+  /** 显示/隐藏体素世界（跑酷模式作为独立维度，隐藏地面世界） */
+  _setWorldVisible(visible) {
+    // 隐藏/显示所有区块网格
+    for (const chunk of this.world.chunks.values()) {
+      if (chunk.mesh) chunk.mesh.visible = visible;
+      if (chunk.waterMesh) chunk.waterMesh.visible = visible;
+      if (chunk.flowerMesh) chunk.flowerMesh.visible = visible;
+    }
+    // 隐藏/显示机器人（属于地面世界）
+    if (this.animalManager) {
+      for (const robot of this.animalManager.robots) {
+        if (robot.group) robot.group.visible = visible;
+      }
+    }
   }
 
   /** 显示短暂消息提示 */
@@ -1552,7 +1574,15 @@ class Game {
     // 跑酷模式：active 时直接更新（第三人称，不依赖指针锁定）
     if (this.parkourManager && this.parkourManager.active) {
       this.parkourManager.update(dt, this.player);
-      this.world.update(this.player.position.x, this.player.position.z);
+      // 跑酷是独立维度，不按跑酷位置加载/卸载体素区块
+
+      // 跑酷因失败自动结束：恢复世界和玩家位置
+      if (!this.parkourManager.active) {
+        this._setWorldVisible(true);
+        this.player.position.copy(this.player.spawnPoint);
+        this.player.velocity.set(0, 0, 0);
+        this._updateParkourHUD(false);
+      }
     } else if (this.isPointerLocked || (this.isMobile && this.isRunning)) {
       // 沙盒模式：桌面端需指针锁定，移动端运行时即更新
       this.player.update(dt);
