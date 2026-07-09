@@ -270,10 +270,11 @@ html, body {
 
 .start-subtitle {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.85);
   margin: 0 0 28px;
   line-height: 1.6;
   letter-spacing: 0.5px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
 .start-modes {
@@ -367,8 +368,9 @@ html, body {
 
 .mode-desc {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.78);
   line-height: 1.4;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 
 .mode-arrow {
@@ -414,8 +416,9 @@ html, body {
 }
 
 .ctrl-item {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.85);
   line-height: 1.5;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
 .ctrl-item kbd {
@@ -480,6 +483,37 @@ html, body {
   text-align: center;
   margin-bottom: 8px;
   letter-spacing: 2px;
+}
+
+/* 面板内每一行：按键 + 说明 */
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.control-row .key {
+  display: inline-block;
+  min-width: 22px;
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  font-weight: bold;
+  color: #FFD700;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  flex-shrink: 0;
+}
+
+.control-row > span:last-child {
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
 }
 
 /* 暂停界面 */
