@@ -8,10 +8,10 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1783520000';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1783520000';
-import { GameAudio } from './audio.js?v=1783520000';
-import { ParkourManager } from './parkour.js?v=1783520000';
+} from './voxel.js?v=1783558331';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1783558331';
+import { GameAudio } from './audio.js?v=1783558331';
+import { ParkourManager } from './parkour.js?v=1783558331';
 
 /* ============================================
    玩家类 - 第一人称角色控制

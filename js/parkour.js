@@ -12,7 +12,7 @@
  *   - 体素世界在下方作为背景
  */
 import * as THREE from 'three';
-import { BlockType } from './voxel.js?v=1783520000';
+import { BlockType } from './voxel.js?v=1783558331';
 
 /* ============================================
    常量
@@ -409,7 +409,7 @@ export class ParkourManager {
         this.scene.remove(obs);
         this.coins++;
         this.score += 50;
-        if (this.audio) this.audio.playJump(); // 复用跳跃音效作为金币音
+        if (this.audio && typeof this.audio.playJump === 'function') this.audio.playJump();
         return { hit: false, coin: true };
       } else {
         obs.userData.hit = true;
@@ -482,7 +482,7 @@ export class ParkourManager {
     // 初始化障碍物生成位置
     this._nextSpawnZ = Math.floor(player.position.z) - 20;
 
-    if (this.audio) this.audio.playJump();
+    if (this.audio && typeof this.audio.playJump === 'function') this.audio.playJump();
     this.showMessage('🏃 跑酷启动！A/D 切换车道 · 空格跳跃 · S 滑铲');
   }
 
@@ -613,7 +613,7 @@ export class ParkourManager {
     if ((player.keys['Space'] || player.keys['KeyK']) && player.onGround && !this._isSliding) {
       player.velocity.y = PARKOUR_JUMP_SPEED;
       player.onGround = false;
-      if (this.audio) this.audio.playJump();
+      if (this.audio && typeof this.audio.playJump === 'function') this.audio.playJump();
     }
 
     // === 滑铲（S 或 ↓，仅地面） ===
