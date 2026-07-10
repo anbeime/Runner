@@ -631,6 +631,41 @@ html, body {
   .desktop-only {
     display: none;
   }
+
+  /* 移动端触控控件优化 */
+  #joystickZone {
+    width: 110px;
+    height: 110px;
+    bottom: 130px;
+    left: 12px;
+  }
+
+  #joystickThumb {
+    width: 46px;
+    height: 46px;
+  }
+
+  .action-btn {
+    width: 54px;
+    height: 54px;
+    font-size: 13px;
+  }
+
+  #actionButtons {
+    bottom: 140px;
+    right: 12px;
+    gap: 10px;
+  }
+
+  #mobileHotbar {
+    bottom: 8px;
+    padding: 2px;
+  }
+
+  .m-slot {
+    width: 34px;
+    height: 34px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -679,52 +714,64 @@ html, body {
 /* 虚拟摇杆 */
 #joystickZone {
   position: absolute;
-  bottom: 130px;
-  left: 24px;
-  width: 110px;
-  height: 110px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 2px solid rgba(255, 255, 255, 0.18);
+  bottom: 140px;
+  left: 16px;
+  width: 130px;
+  height: 130px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid rgba(255, 255, 255, 0.22);
   border-radius: 50%;
   pointer-events: auto;
   touch-action: none;
   z-index: 21;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+#joystickZone:active {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
 #joystickThumb {
   position: absolute;
-  width: 44px;
-  height: 44px;
-  background: rgba(255, 255, 255, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  width: 52px;
+  height: 52px;
+  background: rgba(255, 255, 255, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.5);
   border-radius: 50%;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  transition: transform 0.05s ease-out;
+  transition: background 0.15s, border-color 0.15s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+#joystickZone:active #joystickThumb {
+  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
 /* 操作按钮区 */
 #actionButtons {
   position: absolute;
-  bottom: 140px;
+  bottom: 150px;
   right: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
   pointer-events: auto;
   z-index: 21;
 }
 
 .action-btn {
-  width: 56px;
-  height: 56px;
+  width: 62px;
+  height: 62px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.12);
-  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
   color: #fff;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: bold;
   font-family: inherit;
   cursor: pointer;
@@ -735,12 +782,54 @@ html, body {
   -webkit-touch-callout: none;
   pointer-events: auto;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.1s, border-color 0.1s, transform 0.1s;
 }
 
 .action-btn:active {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.35);
+  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(0.95);
+}
+
+#btnJump {
+  background: rgba(76, 175, 80, 0.25);
+  border-color: rgba(76, 175, 80, 0.5);
+}
+
+#btnJump:active {
+  background: rgba(76, 175, 80, 0.45);
+  border-color: rgba(76, 175, 80, 0.7);
+}
+
+#btnBreak {
+  background: rgba(244, 67, 54, 0.25);
+  border-color: rgba(244, 67, 54, 0.5);
+}
+
+#btnBreak:active {
+  background: rgba(244, 67, 54, 0.45);
+  border-color: rgba(244, 67, 54, 0.7);
+}
+
+#btnPlace {
+  background: rgba(33, 150, 243, 0.25);
+  border-color: rgba(33, 150, 243, 0.5);
+}
+
+#btnPlace:active {
+  background: rgba(33, 150, 243, 0.45);
+  border-color: rgba(33, 150, 243, 0.7);
+}
+
+#btnSlide {
+  background: rgba(255, 152, 0, 0.25);
+  border-color: rgba(255, 152, 0, 0.5);
+  font-size: 12px;
+}
+
+#btnSlide:active {
+  background: rgba(255, 152, 0, 0.45);
+  border-color: rgba(255, 152, 0, 0.7);
 }
 
 /* 移动端物品栏 */

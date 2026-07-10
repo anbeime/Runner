@@ -8,10 +8,10 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1783575000';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1783575000';
-import { GameAudio } from './audio.js?v=1783575000';
-import { ParkourManager } from './parkour.js?v=1783575000';
+} from './voxel.js?v=1783663800';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1783663800';
+import { GameAudio } from './audio.js?v=1783663800';
+import { ParkourManager } from './parkour.js?v=1783663800';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -459,7 +459,6 @@ class TouchController {
     const thumb = document.getElementById('joystickThumb');
     const canvas = this.game.canvas;
 
-    // 用 pointerId 区分摇杆触点和视角触点，支持多点同时操作
     this._joystickId = null;
     this._lookTouchId = null;
 
@@ -503,12 +502,11 @@ class TouchController {
       thumb.style.transform = 'translate(-50%, -50%)';
     });
 
-    // ----- 视角控制（右侧区域） -----
-    // 找一个非摇杆触点用于视角
+    // ----- 视角控制（右侧区域，仅沙盒模式） -----
     const findLookTouch = (e) => {
       for (let i = 0; i < e.touches.length; i++) {
         const t = e.touches[i];
-        if (t.identifier !== this._joystickId && t.clientX > window.innerWidth * 0.35) {
+        if (t.identifier !== this._joystickId && t.clientX > window.innerWidth * 0.4) {
           return t;
         }
       }
@@ -516,12 +514,11 @@ class TouchController {
     };
 
     canvas.addEventListener('touchstart', (e) => {
-      // 只在有新触点落在右侧区域时开启视角（排除UI按钮区域）
+      if (this.game.parkourManager && this.game.parkourManager.active) return;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const t = e.changedTouches[i];
-        // 跳过落在操作按钮区域的触摸
         if (t.target && t.target.closest && t.target.closest('#actionButtons, #joystickZone, #mobileHotbar')) continue;
-        if (t.identifier !== this._joystickId && t.clientX > window.innerWidth * 0.35) {
+        if (t.identifier !== this._joystickId && t.clientX > window.innerWidth * 0.4) {
           this._lookTouchId = t.identifier;
           this._lastTouchX = t.clientX;
           this._lastTouchY = t.clientY;
@@ -531,15 +528,15 @@ class TouchController {
     }, { passive: false });
 
     canvas.addEventListener('touchmove', (e) => {
+      if (this.game.parkourManager && this.game.parkourManager.active) return;
       if (this._lookTouchId === null) return;
-      // 在全部触点中找到我们的视角触点
       for (let i = 0; i < e.touches.length; i++) {
         const t = e.touches[i];
         if (t.identifier === this._lookTouchId) {
           const dx = t.clientX - this._lastTouchX;
           const dy = t.clientY - this._lastTouchY;
           if (this.player && typeof this.player.onMouseMove === 'function') {
-            this.player.onMouseMove(dx * 1.8, dy * 1.8);
+            this.player.onMouseMove(dx * 2.0, dy * 2.0);
           }
           this._lastTouchX = t.clientX;
           this._lastTouchY = t.clientY;
@@ -569,8 +566,8 @@ class TouchController {
     const btnJump = document.getElementById('btnJump');
     const btnPlace = document.getElementById('btnPlace');
     const btnBreak = document.getElementById('btnBreak');
+    const btnSlide = document.getElementById('btnSlide');
 
-    // 按钮按下时的视觉反馈
     const _flashBtn = (btn, isError) => {
       if (!btn) return;
       const bg = isError ? 'rgba(255, 80, 80, 0.4)' : 'rgba(255, 255, 255, 0.35)';
@@ -579,12 +576,12 @@ class TouchController {
       btn.style.borderColor = border;
       btn.style.transition = 'background 0.1s, border-color 0.1s';
       setTimeout(() => {
-        btn.style.background = 'rgba(255, 255, 255, 0.12)';
-        btn.style.borderColor = 'rgba(255, 255, 255, 0.25)';
+        const originalStyle = window.getComputedStyle(btn);
+        btn.style.background = originalStyle.getPropertyValue('--original-bg') || '';
+        btn.style.borderColor = '';
       }, 150);
     };
 
-    // 触觉反馈（设备支持时）
     const _haptic = (pattern) => {
       if (navigator.vibrate) {
         navigator.vibrate(pattern);
@@ -597,6 +594,7 @@ class TouchController {
         e.stopPropagation();
         if (this.player && this.player.keys) this.player.keys['Space'] = true;
         _flashBtn(btnJump);
+        _haptic(15);
       };
       const _jumpUp = (e) => {
         e.preventDefault();
@@ -609,6 +607,25 @@ class TouchController {
       btnJump.addEventListener('pointerleave', _jumpUp);
     }
 
+    if (btnSlide) {
+      const _slideDown = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.player && this.player.keys) this.player.keys['KeyS'] = true;
+        _flashBtn(btnSlide);
+        _haptic(20);
+      };
+      const _slideUp = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.player && this.player.keys) this.player.keys['KeyS'] = false;
+      };
+      btnSlide.addEventListener('pointerdown', _slideDown);
+      btnSlide.addEventListener('pointerup', _slideUp);
+      btnSlide.addEventListener('pointercancel', _slideUp);
+      btnSlide.addEventListener('pointerleave', _slideUp);
+    }
+
     if (btnPlace) {
       const _placeDown = (e) => {
         e.preventDefault();
@@ -617,6 +634,7 @@ class TouchController {
           const ok = this.player.placeBlock();
           _flashBtn(btnPlace, !ok);
           if (!ok) _haptic(10);
+          else _haptic(5);
         }
       };
       btnPlace.addEventListener('pointerdown', _placeDown);
@@ -630,6 +648,7 @@ class TouchController {
           const ok = this.player.breakBlock();
           _flashBtn(btnBreak, !ok);
           if (!ok) _haptic(10);
+          else _haptic(8);
         }
       };
       btnBreak.addEventListener('pointerdown', _breakDown);
