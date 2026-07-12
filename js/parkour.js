@@ -12,7 +12,7 @@
  *   - 体素世界在下方作为背景
  */
 import * as THREE from 'three';
-import { BlockType } from './voxel.js?v=1783663800';
+import { BlockType } from './voxel.js?v=1783823000';
 
 /* ============================================
    常量

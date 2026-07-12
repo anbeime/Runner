@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="description" content="BILIBILI像素方块世界 - 3D像素风格方块世界探索游戏" />
   <title>BILIBILI 像素方块世界</title>
-  <link rel="stylesheet" href="/styles/main.css?v=1783663800" />
+  <link rel="stylesheet" href="/styles/main.css?v=1783823000" />
   <!-- 全局错误捕获：模块加载/运行时错误显式化，避免"点击无反应"无法排查 -->
   <script>
     window.addEventListener('error', function(e) {
@@ -112,6 +112,27 @@
     <div class="parkour-hint"><kbd>A</kbd><kbd>D</kbd> 切换车道 · <kbd>空格</kbd> 跳跃 · <kbd>S</kbd> 滑铲 · <kbd>P</kbd> 退出</div>
   </div>
 
+  <!-- 弹幕对战HUD -->
+  <div id="danmakuHUD" style="display:none;">
+    <div class="dm-team dm-red">
+      <div class="dm-team-name">红方</div>
+      <div class="dm-score" id="dmRedScore">0</div>
+      <div class="dm-bots" id="dmRedBots">0 存活</div>
+    </div>
+    <div class="dm-center">
+      <div class="dm-vs">VS</div>
+      <div class="dm-timer" id="dmTimer">00:00</div>
+      <div class="dm-target">目标 <span id="dmTarget">100</span> 分</div>
+    </div>
+    <div class="dm-team dm-blue">
+      <div class="dm-team-name">蓝方</div>
+      <div class="dm-score" id="dmBlueScore">0</div>
+      <div class="dm-bots" id="dmBlueBots">0 存活</div>
+    </div>
+    <div id="dmMessage" class="dm-message"></div>
+    <div class="dm-hint"><kbd>1</kbd> 加入红方 · <kbd>2</kbd> 加入蓝方 · <kbd>M</kbd> 退出对战</div>
+  </div>
+
   <!-- 加载进度 -->
   <div id="loadingBar">
     <div class="loading-text">正在生成 BILIBILI 世界...</div>
@@ -149,6 +170,18 @@
               <span class="mode-tag">NEW</span>
             </div>
             <div class="mode-desc">BuilderBot 前方实时建造 · 5 种段位 · 跳跃穿越</div>
+          </div>
+          <div class="mode-arrow">›</div>
+        </button>
+
+        <button class="mode-card mode-danmaku" data-mode="danmaku">
+          <div class="mode-icon">⚔️</div>
+          <div class="mode-body">
+            <div class="mode-name">
+              弹幕AI对战
+              <span class="mode-tag">HOT</span>
+            </div>
+            <div class="mode-desc">红蓝阵营AI自动对战 · 弹幕齐射 · AI实时解说</div>
           </div>
           <div class="mode-arrow">›</div>
         </button>
@@ -200,7 +233,7 @@
   </div>
 
   <!-- 游戏主模块 (添加版本号防止缓存) -->
-  <script type="module" src="/js/game.js?v=1783663800"></script>
+  <script type="module" src="/js/game.js?v=1783823000"></script>
   <!-- 诊断：确认 game.js 是否执行（超时放宽到 10 秒，覆盖移动端区块加载耗时） -->
   <script>
     window.__gameLoadCheck = setTimeout(function() {

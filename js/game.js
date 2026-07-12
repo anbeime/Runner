@@ -8,10 +8,11 @@ import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js?v=1783663800';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1783663800';
-import { GameAudio } from './audio.js?v=1783663800';
-import { ParkourManager } from './parkour.js?v=1783663800';
+} from './voxel.js?v=1783823000';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1783823000';
+import { GameAudio } from './audio.js?v=1783823000';
+import { ParkourManager } from './parkour.js?v=1783823000';
+import { DanmakuBattleManager } from './danmaku.js?v=1783823000';
 
 /* ============================================
    玩家类 - 第一人称角色控制
@@ -936,6 +937,17 @@ class Game {
       this.parkourManager = null;
     }
 
+    // 初始化弹幕对战管理器
+    try {
+      this.danmakuManager = new DanmakuBattleManager(
+        this.scene, this.camera, this.audio
+      );
+      this.danmakuManager.onMessage = (msg) => this._showDanmakuMessage(msg);
+    } catch (err) {
+      console.error('[DanmakuBattleManager] 初始化失败:', err);
+      this.danmakuManager = null;
+    }
+
     // 相机：移动端更广视角（90°），桌面端默认（75°）
     this.defaultFov = this.isMobile ? 90 : 75;
     this.fov = this.defaultFov;
@@ -1092,8 +1104,10 @@ class Game {
     // === 优先绑定按钮事件（确保即使后续抛错也能点击）===
     const sandboxBtn = this.ui.startScreen.querySelector('[data-mode="sandbox"]');
     const parkourBtn = this.ui.startScreen.querySelector('[data-mode="parkour"]');
+    const danmakuBtn = this.ui.startScreen.querySelector('[data-mode="danmaku"]');
     if (sandboxBtn) sandboxBtn.addEventListener('click', () => this._enterGame('sandbox'));
     if (parkourBtn) parkourBtn.addEventListener('click', () => this._enterGame('parkour'));
+    if (danmakuBtn) danmakuBtn.addEventListener('click', () => this._enterGame('danmaku'));
 
     // 键盘事件（桌面端 + 移动端外接键盘通用）
     document.addEventListener('keydown', (e) => {
@@ -1176,7 +1190,6 @@ class Game {
           if (this.parkourManager.active) {
             this.parkourManager.stop(this.player);
             this._setWorldVisible(true);
-            // 恢复玩家到出生点
             this.player.position.copy(this.player.spawnPoint);
             this.player.velocity.set(0, 0, 0);
             this._updateParkourHUD(false);
@@ -1186,6 +1199,33 @@ class Game {
             this._updateParkourHUD(true);
           }
         }
+      }
+
+      // M键 - 切换弹幕对战模式
+      if (e.code === 'KeyM' && this.isRunning) {
+        if (this.danmakuManager) {
+          if (this.danmakuManager.active) {
+            this.danmakuManager.stop();
+            this._setWorldVisible(true);
+            this.player.position.copy(this.player.spawnPoint);
+            this.player.velocity.set(0, 0, 0);
+            this._updateDanmakuHUD(false);
+          } else {
+            this._setWorldVisible(false);
+            this.danmakuManager.start();
+            this._updateDanmakuHUD(true);
+          }
+        }
+      }
+
+      // 1键 - 加入红方（弹幕对战模式）
+      if (e.code === 'Digit1' && this.danmakuManager && this.danmakuManager.active) {
+        this.danmakuManager.joinTeam(this.danmakuManager.redTeam);
+      }
+
+      // 2键 - 加入蓝方（弹幕对战模式）
+      if (e.code === 'Digit2' && this.danmakuManager && this.danmakuManager.active) {
+        this.danmakuManager.joinTeam(this.danmakuManager.blueTeam);
       }
     });
 
@@ -1346,6 +1386,17 @@ class Game {
         }
       }, 200);
     }
+
+    // 弹幕对战模式：延迟启动
+    if (mode === 'danmaku' && this.danmakuManager) {
+      setTimeout(() => {
+        if (this.danmakuManager && !this.danmakuManager.active) {
+          this._setWorldVisible(false);
+          this.danmakuManager.start();
+          this._updateDanmakuHUD(true);
+        }
+      }, 200);
+    }
   }
 
   _showGameUI(show) {
@@ -1397,6 +1448,41 @@ class Game {
       msgEl.style.display = data.message ? 'block' : 'none';
     }
     hud.style.display = 'block';
+  }
+
+  /** 更新弹幕对战HUD */
+  _updateDanmakuHUD(show) {
+    const hud = document.getElementById('danmakuHUD');
+    if (!hud) return;
+    if (!show) {
+      hud.style.display = 'none';
+      return;
+    }
+    hud.style.display = 'flex';
+    if (!this.danmakuManager || !this.danmakuManager.active) return;
+
+    const s = this.danmakuManager.getStatus();
+    const el = (id) => document.getElementById(id);
+    if (el('dmRedScore')) el('dmRedScore').textContent = s.redScore;
+    if (el('dmBlueScore')) el('dmBlueScore').textContent = s.blueScore;
+    if (el('dmRedBots')) el('dmRedBots').textContent = `${s.redBots} 存活`;
+    if (el('dmBlueBots')) el('dmBlueBots').textContent = `${s.blueBots} 存活`;
+    if (el('dmTarget')) el('dmTarget').textContent = s.target;
+    if (el('dmTimer')) {
+      const min = Math.floor(s.time / 60).toString().padStart(2, '0');
+      const sec = Math.floor(s.time % 60).toString().padStart(2, '0');
+      el('dmTimer').textContent = `${min}:${sec}`;
+    }
+  }
+
+  /** 显示弹幕解说消息 */
+  _showDanmakuMessage(msg) {
+    const el = document.getElementById('dmMessage');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(this._dmMsgTimer);
+    this._dmMsgTimer = setTimeout(() => { el.style.opacity = '0'; }, 4000);
   }
 
   /** 启动背景音乐 */
@@ -1593,14 +1679,20 @@ class Game {
     // 跑酷模式：active 时直接更新（第三人称，不依赖指针锁定）
     if (this.parkourManager && this.parkourManager.active) {
       this.parkourManager.update(dt, this.player);
-      // 跑酷是独立维度，不按跑酷位置加载/卸载体素区块
-
-      // 跑酷因失败自动结束：恢复世界和玩家位置
       if (!this.parkourManager.active) {
         this._setWorldVisible(true);
         this.player.position.copy(this.player.spawnPoint);
         this.player.velocity.set(0, 0, 0);
         this._updateParkourHUD(false);
+      }
+    } else if (this.danmakuManager && this.danmakuManager.active) {
+      // 弹幕对战模式：AI自动对战，不需要玩家操作
+      this.danmakuManager.update(dt);
+      if (!this.danmakuManager.active) {
+        this._setWorldVisible(true);
+        this.player.position.copy(this.player.spawnPoint);
+        this.player.velocity.set(0, 0, 0);
+        this._updateDanmakuHUD(false);
       }
     } else if (this.isPointerLocked || (this.isMobile && this.isRunning)) {
       // 沙盒模式：桌面端需指针锁定，移动端运行时即更新
@@ -1631,6 +1723,11 @@ class Game {
     // 更新跑酷 HUD
     if (this.parkourManager && this.parkourManager.active) {
       this._updateParkourHUD(true);
+    }
+
+    // 更新弹幕对战 HUD
+    if (this.danmakuManager && this.danmakuManager.active) {
+      this._updateDanmakuHUD(true);
     }
 
     // 渲染（renderer 已在循环开头校验，这里安全）

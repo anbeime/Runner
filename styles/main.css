@@ -878,6 +878,136 @@ html, body {
   image-rendering: pixelated;
 }
 
+/* ============================================
+   弹幕对战 HUD
+   ============================================ */
+#danmakuHUD {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: none;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 16px;
+  pointer-events: none;
+}
+
+.dm-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 100px;
+}
+
+.dm-red .dm-team-name { color: #FF6B6B; }
+.dm-blue .dm-team-name { color: #6B9EFF; }
+
+.dm-team-name {
+  font-size: 14px;
+  font-weight: bold;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.dm-score {
+  font-size: 32px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.9), 0 0 12px currentColor;
+  line-height: 1;
+}
+
+.dm-red .dm-score { text-shadow: 0 2px 6px rgba(0,0,0,0.9), 0 0 16px #FF4444; }
+.dm-blue .dm-score { text-shadow: 0 2px 6px rgba(0,0,0,0.9), 0 0 16px #4488FF; }
+
+.dm-bots {
+  font-size: 11px;
+  color: rgba(255,255,255,0.8);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.dm-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 4px;
+}
+
+.dm-vs {
+  font-size: 18px;
+  font-weight: 900;
+  color: #FFD700;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+
+.dm-timer {
+  font-size: 16px;
+  font-weight: bold;
+  color: #fff;
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+.dm-target {
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.dm-message {
+  position: fixed;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 16px;
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 0 2px 4px rgba(0,0,0,1), 0 0 10px rgba(255,215,0,0.5);
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.5s;
+  z-index: 51;
+  max-width: 80%;
+}
+
+.dm-hint {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: rgba(255,255,255,0.7);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  pointer-events: none;
+  z-index: 51;
+  white-space: nowrap;
+}
+
+.dm-hint kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  margin: 0 2px;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 3px;
+  font-size: 11px;
+  color: #FFD700;
+}
+
+/* 弹幕模式卡片样式 */
+.mode-danmaku {
+  border-left: 3px solid #FF6B6B;
+}
+
+.mode-danmaku:hover {
+  background: rgba(255, 107, 107, 0.08);
+}
+
 /* 移动端暂停界面适配 */
 @media (max-width: 768px) {
   #pauseScreen .pause-text {
