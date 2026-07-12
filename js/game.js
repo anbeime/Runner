@@ -1104,10 +1104,8 @@ class Game {
     // === 优先绑定按钮事件（确保即使后续抛错也能点击）===
     const sandboxBtn = this.ui.startScreen.querySelector('[data-mode="sandbox"]');
     const parkourBtn = this.ui.startScreen.querySelector('[data-mode="parkour"]');
-    const danmakuBtn = this.ui.startScreen.querySelector('[data-mode="danmaku"]');
     if (sandboxBtn) sandboxBtn.addEventListener('click', () => this._enterGame('sandbox'));
     if (parkourBtn) parkourBtn.addEventListener('click', () => this._enterGame('parkour'));
-    if (danmakuBtn) danmakuBtn.addEventListener('click', () => this._enterGame('danmaku'));
 
     // 键盘事件（桌面端 + 移动端外接键盘通用）
     document.addEventListener('keydown', (e) => {
@@ -1383,17 +1381,6 @@ class Game {
           this._setWorldVisible(false);
           this.parkourManager.start(this.player);
           this._updateParkourHUD(true);
-        }
-      }, 200);
-    }
-
-    // 弹幕对战模式：延迟启动
-    if (mode === 'danmaku' && this.danmakuManager) {
-      setTimeout(() => {
-        if (this.danmakuManager && !this.danmakuManager.active) {
-          this._setWorldVisible(false);
-          this.danmakuManager.start();
-          this._updateDanmakuHUD(true);
         }
       }, 200);
     }
