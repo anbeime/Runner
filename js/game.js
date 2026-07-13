@@ -1284,7 +1284,7 @@ class Game {
       });
 
       const requestLock = () => {
-        if (!this.isPointerLocked && this.isRunning) {
+        if (!this.isPointerLocked && this.isRunning && this.canvas && typeof this.canvas.requestPointerLock === 'function') {
           this.canvas.requestPointerLock();
         }
       };
@@ -1369,7 +1369,9 @@ class Game {
 
     // 桌面端请求指针锁定；移动端显示触控 UI
     if (!this.isMobile) {
-      this.canvas.requestPointerLock();
+      if (this.canvas && typeof this.canvas.requestPointerLock === 'function') {
+        this.canvas.requestPointerLock();
+      }
     } else {
       this._showGameUI(true);
     }
