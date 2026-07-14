@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="description" content="BILIBILI像素方块世界 - 3D像素风格方块世界探索游戏" />
   <title>BILIBILI 像素方块世界</title>
-  <link rel="stylesheet" href="/styles/main.css?v=1783823000" />
+  <link rel="stylesheet" href="/styles/main.css?v=1783825000" />
   <!-- 全局错误捕获：模块加载/运行时错误显式化，避免"点击无反应"无法排查 -->
   <script>
     window.addEventListener('error', function(e) {
@@ -110,6 +110,7 @@
     </div>
     <div id="parkourMessage" class="parkour-message" style="display:none;"></div>
     <div class="parkour-hint"><kbd>A</kbd><kbd>D</kbd> 切换车道 · <kbd>空格</kbd> 跳跃 · <kbd>S</kbd> 滑铲 · <kbd>P</kbd> 退出</div>
+    <button id="btnExitParkour" class="exit-mode-btn">退出跑酷</button>
   </div>
 
   <!-- 弹幕对战HUD -->
@@ -131,6 +132,7 @@
     </div>
     <div id="dmMessage" class="dm-message"></div>
     <div class="dm-hint"><kbd>1</kbd> 加入红方 · <kbd>2</kbd> 加入蓝方 · <kbd>M</kbd> 退出对战</div>
+    <button id="btnExitDanmaku" class="exit-mode-btn">退出对战</button>
   </div>
 
   <!-- 加载进度 -->
@@ -227,7 +229,7 @@
   </div>
 
   <!-- 游戏主模块 (添加版本号防止缓存) -->
-  <script type="module" src="/js/game.js?v=1783824000"></script>
+  <script type="module" src="/js/game.js?v=1783825000"></script>
   <!-- 诊断：确认 game.js 是否执行（超时放宽到 10 秒，覆盖移动端区块加载耗时） -->
   <script>
     window.__gameLoadCheck = setTimeout(function() {

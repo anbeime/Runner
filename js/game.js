@@ -1227,6 +1227,38 @@ class Game {
       }
     });
 
+    // 退出跑酷按钮（移动端友好）
+    const btnExitParkour = document.getElementById('btnExitParkour');
+    if (btnExitParkour) {
+      btnExitParkour.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.parkourManager && this.parkourManager.active) {
+          this.parkourManager.stop(this.player);
+          this._setWorldVisible(true);
+          this.player.position.copy(this.player.spawnPoint);
+          this.player.velocity.set(0, 0, 0);
+          this._updateParkourHUD(false);
+        }
+      });
+    }
+
+    // 退出弹幕对战按钮（移动端友好）
+    const btnExitDanmaku = document.getElementById('btnExitDanmaku');
+    if (btnExitDanmaku) {
+      btnExitDanmaku.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (this.danmakuManager && this.danmakuManager.active) {
+          this.danmakuManager.stop();
+          this._setWorldVisible(true);
+          this.player.position.copy(this.player.spawnPoint);
+          this.player.velocity.set(0, 0, 0);
+          this._updateDanmakuHUD(false);
+        }
+      });
+    }
+
     document.addEventListener('keyup', (e) => {
       if (!this.player) return;
       this.player.keys[e.code] = false;
