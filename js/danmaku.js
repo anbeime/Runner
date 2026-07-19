@@ -9,7 +9,7 @@
  * - 玩家可召唤增援（按键加入阵营）
  * - 积分制，先达到目标分数获胜
  */
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js?v=1784448000';
 
 // 阵营颜色
 const TEAM_RED = { color: 0xFF4444, name: '红方', hex: '#FF4444' };

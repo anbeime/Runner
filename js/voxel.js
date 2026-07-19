@@ -3,8 +3,8 @@
  * 基于 pycraft 项目增强：更多方块类型、生物群系、花朵、云彩
  */
 
-import * as THREE from 'three';
-import { SimplexNoise } from './noise.js';
+import * as THREE from '../vendor/three.module.js?v=1784448000';
+import { SimplexNoise } from './noise.js?v=1784448000';
 
 /* ============================================
    常量与配置

@@ -11,8 +11,8 @@
  *   - 收集金币加分
  *   - 体素世界在下方作为背景
  */
-import * as THREE from 'three';
-import { BlockType } from './voxel.js';
+import * as THREE from '../vendor/three.module.js?v=1784448000';
+import { BlockType } from './voxel.js?v=1784448000';
 
 /* ============================================
    常量

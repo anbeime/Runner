@@ -3,8 +3,8 @@
  * 包含：ScoutBot、HeavyBot、BuilderBot（自主建造）的体素模型、智能AI、建筑模板
  * 参考：【当AI完全体进入我的世界！！】
  */
-import * as THREE from 'three';
-import { BlockType, isSolid, CHUNK_SIZE } from './voxel.js';
+import * as THREE from '../vendor/three.module.js?v=1784448000';
+import { BlockType, isSolid, CHUNK_SIZE } from './voxel.js?v=1784448000';
 
 /* ============================================
    常量配置

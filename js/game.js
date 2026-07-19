@@ -3,16 +3,16 @@
  * 包含：玩家控制、物理系统、射线检测、游戏循环
  */
 
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js?v=1784448000';
 import {
   World, Chunk, BlockType, BlockNames, isSolid,
   CHUNK_SIZE, CHUNK_HEIGHT, RENDER_DISTANCE, getBlockColor,
   isMobileDevice, getRenderDistance,
-} from './voxel.js';
-import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js';
-import { GameAudio } from './audio.js';
-import { ParkourManager } from './parkour.js';
-import { DanmakuBattleManager } from './danmaku.js';
+} from './voxel.js?v=1784448000';
+import { AnimalManager, ScoutBot, HeavyBot, BuilderBot } from './animals.js?v=1784448000';
+import { GameAudio } from './audio.js?v=1784448000';
+import { ParkourManager } from './parkour.js?v=1784448000';
+import { DanmakuBattleManager } from './danmaku.js?v=1784448000';
 
 /* ============================================
    玩家类 - 第一人称角色控制
