@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { SimplexNoise } from './noise.js?v=bilibili2026';
+import { SimplexNoise } from './noise.js';
 
 /* ============================================
    常量与配置
